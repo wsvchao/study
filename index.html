@@ -336,9 +336,11 @@ body.hastab.hasfoot main{padding-bottom:168px}
   display:flex;align-items:center;justify-content:center}
 .ctmini.ph{visibility:hidden}
 .ctmini.ctdel{color:var(--clay);font-size:17px}
+/* 經文列表：左欄放章節號＋參考資料小標籤（直排），右欄放經文，經文才有全寬可以橫排 */
 .vrow.refrow{align-items:flex-start}
-.refrow .vmain{flex:1 1 auto;min-width:0}
-.refchips{display:flex;gap:6px;flex:0 0 auto;padding-top:1px}
+.refrow .vleft{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+.refrow .vleft .vmain{flex:0 0 auto;display:flex;align-items:baseline;gap:8px;padding:0}
+.refrow .vtextbtn{flex:1 1 auto;min-width:0;text-align:left;padding:0}
 .refchip{font-family:var(--f-ui);font-size:calc(11px * var(--fs));font-weight:500;
   padding:5px 10px;border-radius:99px;border:1px solid var(--brass-line);
   background:var(--brass-soft);color:var(--brass-ink);white-space:nowrap;line-height:1.3}
@@ -524,7 +526,7 @@ var S = {
    egNote:"底色標出的是引註那幾頁的段落，前後各兩段是上下文。中文譯文陸續補上。",
    egOnce:"第一次看某一本書需要連網，之後就存在手機裡。",
    egErr:"讀不到這一段。懷氏著作的段落放在你自己的網站上，預覽版沒有這些檔案。",
-   cmBtn:"SDA聖經注釋", cmChip:"SDA注釋", cmNote:"摘自基督復臨安息日會官方《聖經注釋》（大部分書卷為英文原文，中文翻譯陸續補上；路加福音、帖撒羅尼迦後書已有完整中文注釋）。",
+   cmBtn:"SDA聖經注釋", cmChip:"SDA注釋", egChip:"懷著", cmNote:"摘自基督復臨安息日會官方《聖經注釋》（大部分書卷為英文原文，中文翻譯陸續補上；路加福音、帖撒羅尼迦後書已有完整中文注釋）。",
    cmErr:"讀不到這一段注釋。注釋檔案放在你自己的網站上，預覽版沒有這些檔案。",
    tabBible:"聖經", tabTopics:"主題", tabLib:"背誦庫", tabSet:"設定",
    bibleNote:"點書卷看各章；第一次讀某一卷需要連網，之後就存在手機裡，離線也讀得到。",
@@ -620,7 +622,7 @@ var S = {
    egNote:"底色标出的是引注那几页的段落，前后各两段是上下文。中文译文陆续补上。",
    egOnce:"第一次看某一本书需要连网，之后就存在手机里。",
    egErr:"读不到这一段。怀氏著作的段落放在你自己的网站上，预览版没有这些档案。",
-   cmBtn:"SDA圣经注释", cmChip:"SDA注释", cmNote:"摘自基督复临安息日会官方《圣经注释》（大部分书卷为英文原文，中文翻译陆续补上；路加福音、帖撒罗尼迦后书已有完整中文注释）。",
+   cmBtn:"SDA圣经注释", cmChip:"SDA注释", egChip:"怀着", cmNote:"摘自基督复临安息日会官方《圣经注释》（大部分书卷为英文原文，中文翻译陆续补上；路加福音、帖撒罗尼迦后书已有完整中文注释）。",
    cmErr:"读不到这一段注释。注释档案放在你自己的网站上，预览版没有这些档案。",
    tabBible:"圣经", tabTopics:"主题", tabLib:"背诵库", tabSet:"设定",
    bibleNote:"点书卷看各章；第一次读某一卷需要连网，之后就存在手机里，离线也读得到。",
@@ -716,7 +718,7 @@ var S = {
    egNote:"Shaded paragraphs are the pages cited; two paragraphs on either side give the context.",
    egOnce:"A book is fetched the first time you open it, then kept on the device.",
    egErr:"This passage could not be loaded. The Ellen White text lives on your own site; the preview does not carry those files.",
-   cmBtn:"SDA Commentary", cmChip:"SDA Note", cmNote:"From the official Seventh-day Adventist Bible Commentary (most books are in the English original, with a Chinese translation added over time; Luke and 2 Thessalonians already have complete Chinese commentary).",
+   cmBtn:"SDA Commentary", cmChip:"SDABC", egChip:"EGW", cmNote:"From the official Seventh-day Adventist Bible Commentary (most books are in the English original, with a Chinese translation added over time; Luke and 2 Thessalonians already have complete Chinese commentary).",
    cmErr:"This commentary could not be loaded. The commentary files live on your own site; the preview does not carry those files.",
    tabBible:"Bible", tabTopics:"Topics", tabLib:"Memorize", tabSet:"Settings",
    bibleNote:"Tap a book for its chapters. A book is fetched the first time you open it, then kept on the device for offline use.",
@@ -2414,23 +2416,27 @@ function viewVerses(s){
       '<div class="en">'+esc(it[s.rk])+"</div></div>"+
       '<div class="note">'+esc(s.noVerse)+"</div></div></main>";
   }
-  var egBtnHtml = (it.eg && EG[it.eg[0]]) ?
-    '<div class="actions" style="margin:12px 0 0">'+
-      '<button class="btn btn-wide" data-eg="'+esc(it.eg[0])+'">'+esc(s.egBtn)+"</button></div>" : "";
+  /* 懷氏參閱是整段共用同一段引文，不逐節不同：只放在第一節下面，跟SDA注釋同一欄對齊 */
+  var egChipHtml = (it.eg && EG[it.eg[0]]) ?
+    '<button class="refchip" data-eg="'+esc(it.eg[0])+'">'+esc(s.egChip)+"</button>" : "";
   if(st.mode==="read"){
     var rr=it.vs.map(function(v,vi){
       var k=v.bi+"."+v.c+"."+v.v;
-      var chip=CMSET[k] ? '<span class="refchips"><button class="refchip" data-cm="'+esc(k)+'">'+esc(s.cmChip)+"</button></span>" : "";
+      var chips=(CMSET[k]?'<button class="refchip" data-cm="'+esc(k)+'">'+esc(s.cmChip)+"</button>":"")+
+                (vi===0?egChipHtml:"");
       return '<div class="vrow refrow">'+
-        '<button class="vmain" data-opench="'+vi+'">'+
-          '<span class="vkey">'+esc(v[s.vk])+"</span>"+
-          '<span class="vtext">'+esc(v[s.key])+"</span></button>"+chip+"</div>";
+        '<span class="vleft">'+
+          '<button class="vmain" data-opench="'+vi+'"><span class="vkey">'+esc(v[s.vk])+"</span></button>"+
+          chips+
+        "</span>"+
+        '<button class="vtextbtn" data-opench="'+vi+'"><span class="vtext">'+esc(v[s.key])+"</span></button>"+
+      "</div>";
     }).join("");
     return head+'<main><div class="wrap"><div class="thead">'+
       "<h1>"+esc(it[s.key])+"</h1>"+
       '<div class="en">'+esc(it[s.rk])+"</div>"+
       '<div class="src">'+esc(t(s.verseOf,it.vs.length))+
-        (it.trunc?" "+esc(s.trunc):"")+"</div>"+egBtnHtml+"</div>"+
+        (it.trunc?" "+esc(s.trunc):"")+"</div></div>"+
       '<p class="hint">'+esc(s.readTapVerse)+"</p>"+rr+"</div></main>";
   }
   var f=st.vfilt||"all";
@@ -2445,20 +2451,24 @@ function viewVerses(s){
       '<span><i class="vstate solid"></i>'+esc(s.stSolid)+"</span>"+
       '<span><i class="vstate weak"></i>'+esc(s.stWeak)+"</span>"+
       '<span><i class="vstate new"></i>'+esc(s.stNew)+"</span></div>";
-  var rows=shown.map(function(x){
+  var rows=shown.map(function(x,idx){
     var k=x.v.bi+"."+x.v.c+"."+x.v.v;
-    var chip=CMSET[k] ? '<span class="refchips"><button class="refchip" data-cm="'+esc(k)+'">'+esc(s.cmChip)+"</button></span>" : "";
+    var chips=(CMSET[k]?'<button class="refchip" data-cm="'+esc(k)+'">'+esc(s.cmChip)+"</button>":"")+
+              (idx===0?egChipHtml:"");
     return '<div class="vrow refrow">'+
-      '<button class="vmain" data-verse="'+x.vi+'">'+
-        '<i class="vstate '+x.st+'"></i>'+
-        '<span class="vkey">'+esc(x.v[s.vk])+"</span>"+
-        '<span class="vtext">'+esc(x.v[s.key])+"</span></button>"+chip+"</div>";
+      '<span class="vleft">'+
+        '<button class="vmain" data-verse="'+x.vi+'"><i class="vstate '+x.st+'"></i>'+
+          '<span class="vkey">'+esc(x.v[s.vk])+"</span></button>"+
+        chips+
+      "</span>"+
+      '<button class="vtextbtn" data-verse="'+x.vi+'"><span class="vtext">'+esc(x.v[s.key])+"</span></button>"+
+    "</div>";
   }).join("") || '<div class="note">'+esc(s.allSolid)+"</div>";
   return head+'<main><div class="wrap"><div class="thead">'+
     "<h1>"+esc(it[s.key])+"</h1>"+
     '<div class="en">'+esc(it[s.rk])+"</div>"+
     '<div class="src">'+esc(t(s.verseOf,it.vs.length))+
-      (it.trunc?" "+esc(s.trunc):"")+"</div>"+egBtnHtml+"</div>"+
+      (it.trunc?" "+esc(s.trunc):"")+"</div></div>"+
     filtRow+'<p class="hint">'+esc(s.pickVerse)+"<br>"+esc(s.weakHow)+"</p>"+rows+"</div></main>";
 }
 
