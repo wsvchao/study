@@ -1,6 +1,6 @@
 /* Textionary 背誦本 — offline cache.
    改過 index.html 之後，把下面的版本號 +1，手機才會抓到新版。 */
-const VERSION = "study-v60";
+const VERSION = "study-v61";
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest",
   "./icon-180.png", "./icon-192.png", "./icon-512.png"
@@ -18,7 +18,7 @@ self.addEventListener("install", (e) => {
    一定要把下面對應那個常數的版號 +1，才會逼瀏覽器把整批舊快取砍掉、乾乾淨淨重抓。 */
 const BIBLE = "textionary-bible-v1";
 const EGW = "textionary-egw-v1";
-const COMMENTARY = "textionary-commentary-v2";
+const COMMENTARY = "textionary-commentary-v3";
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
