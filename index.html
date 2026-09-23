@@ -558,6 +558,7 @@ var S = {
    egErr:"讀不到這一段。懷氏著作的段落放在你自己的網站上，預覽版沒有這些檔案。",
    cmBtn:"SDA聖經注釋", cmChip:"SDA注釋", egChip:"懷著", cmNote:"摘自基督復臨安息日會官方《聖經注釋》（大部分書卷為英文原文，中文翻譯陸續補上；路加福音、帖撒羅尼迦後書已有完整中文注釋）。",
    cmErr:"讀不到這一段注釋。注釋檔案放在你自己的網站上，預覽版沒有這些檔案。",
+   cmFallback:"這一節還沒有中文譯文，以下顯示英文原文。",
    medChip:"默想",
    medGoal:"目標：藉由這節經文，我要思考和耶穌的關係，我要找著耶穌。",
    medQ:["主耶穌，祢此刻就坐在我身邊，親口對我說這節經文。祢要藉由這節經文告訴我什麼？",
@@ -674,6 +675,7 @@ var S = {
    egErr:"读不到这一段。怀氏著作的段落放在你自己的网站上，预览版没有这些档案。",
    cmBtn:"SDA圣经注释", cmChip:"SDA注释", egChip:"怀着", cmNote:"摘自基督复临安息日会官方《圣经注释》（大部分书卷为英文原文，中文翻译陆续补上；路加福音、帖撒罗尼迦后书已有完整中文注释）。",
    cmErr:"读不到这一段注释。注释档案放在你自己的网站上，预览版没有这些档案。",
+   cmFallback:"这一节还没有中文译文，以下显示英文原文。",
    medChip:"默想",
    medGoal:"目标：藉由这节经文，我要思考和耶稣的关系，我要找着耶稣。",
    medQ:["主耶稣，祢此刻就坐在我身边，亲口对我说这节经文。祢要藉由这节经文告诉我什么？",
@@ -790,6 +792,7 @@ var S = {
    egErr:"This passage could not be loaded. The Ellen White text lives on your own site; the preview does not carry those files.",
    cmBtn:"SDA Commentary", cmChip:"SDABC", egChip:"EGW", cmNote:"From the official Seventh-day Adventist Bible Commentary (most books are in the English original, with a Chinese translation added over time; Luke and 2 Thessalonians already have complete Chinese commentary).",
    cmErr:"This commentary could not be loaded. The commentary files live on your own site; the preview does not carry those files.",
+   cmFallback:"No Chinese translation yet for this verse; showing the English original below.",
    medChip:"Meditate",
    medGoal:"Goal: Through this verse, I want to reflect on my relationship with Jesus, and to seek Him.",
    medQ:["Lord Jesus, You are sitting beside me right now, speaking this verse to me personally. What do You want to tell me through it?",
@@ -2034,28 +2037,48 @@ function viewEg(s){
    DATA.cm is {en:[...], zh:[...]}, each a flat list of "b.c.v" keys that have commentary
    text IN THAT LANGUAGE -- built once into a lookup object (CMSET[k] = {en:1} / {zh:1} /
    {en:1,zh:1}) so viewVerse can decide, per the CURRENT UI language, whether to show the
-   button at all (an English-mode reader should never be shown Chinese commentary, and
-   vice versa -- see cmAvail/cmTextFor below). */
+   button at all.
+
+   The two directions are NOT symmetric. An English-mode reader must never be shown Chinese
+   commentary (that was the reported bug) -- English UI only shows a button, and only shows
+   text, when an English original exists. But a Chinese/繁簡-mode reader can generally still
+   read English, and historically the app already showed the (mostly-untranslated) English
+   original under the Chinese UI for the vast majority of the Bible -- only Matthew, Luke and
+   2 Thessalonians have Chinese translation so far (see cmNote). So Chinese UI prefers the
+   Chinese text when available but FALLS BACK to showing the English original (with a small
+   note, cmFallback) rather than hiding the button entirely -- otherwise switching to strict
+   per-language gating would have quietly hidden commentary from almost the whole Bible for
+   Chinese-reading users, which is a regression, not a fix. */
 var CMSET = {};
 (function(){
   var cm = DATA.cm || {};
   (cm.en || []).forEach(function(k){ (CMSET[k] = CMSET[k] || {}).en = 1; });
   (cm.zh || []).forEach(function(k){ (CMSET[k] = CMSET[k] || {}).zh = 1; });
 })();
-/* 注釋只有兩種語言狀態：英文原文（en）、中文（zh，繁簡共用同一份中文內容，
-   簡體介面暫時沒有另外轉換）。s.key 是 "en" 才算英文，"zh"／"hans" 都算中文。 */
-function cmLangKey(s){ return s.key === "en" ? "en" : "zh"; }
-function cmAvail(k, s){ return !!(CMSET[k] && CMSET[k][cmLangKey(s)]); }
+function cmAvail(k, s){
+  var got = CMSET[k]; if(!got) return false;
+  return s.key === "en" ? !!got.en : !!(got.zh || got.en);
+}
 /* 大部分書卷的注釋 JSON 每節存純文字字串（原文只有一種語言，沒必要包成物件）；
    只有馬太福音（bi 39）逐節存 {en,zh} 物件，因為同一節可能只翻好中文、只留得住
    英文、或兩者都有。純文字字串屬於哪種語言，要看書卷：路加（41）、帖後（52）
    目前只找得到已翻譯的中文全文（英文原文已佚失，見程式庫說明），純文字就當中文；
    其餘書卷純文字一律當英文原文。 */
 var CM_ZH_ONLY = { 41: 1, 52: 1 };
-function cmTextFor(raw, bi, lang){
+/* 回傳 {text, fb}：fb=true 代表「中文介面，但這節還沒有中文譯文，改顯示英文原文」，
+   畫面上要另外提示一下，使用者才不會覺得莫名其妙冒出一段英文。英文介面找不到英文
+   原文就回傳 null（連按鈕都不會出現，cmAvail 已經先擋掉了，這裡是保險）。 */
+function cmResolve(raw, bi, s){
   if(raw == null) return null;
-  if(typeof raw === "object") return raw[lang] || null;
-  return (CM_ZH_ONLY[bi] ? "zh" : "en") === lang ? raw : null;
+  var wantZh = s.key !== "en";
+  if(typeof raw === "object"){
+    if(!wantZh) return raw.en ? { text: raw.en, fb: false } : null;
+    if(raw.zh) return { text: raw.zh, fb: false };
+    return raw.en ? { text: raw.en, fb: true } : null;
+  }
+  var rawIsZh = !!CM_ZH_ONLY[bi];
+  if(!wantZh) return rawIsZh ? null : { text: raw, fb: false };
+  return { text: raw, fb: !rawIsZh };
 }
 var CMT = {}, CMV = 1;
 function cmUrl(bi){ return "commentary/" + (bi < 10 ? "0" + bi : bi) + ".json?v=" + CMV; }
@@ -2099,9 +2122,10 @@ function viewCm(s){
     body = '<div class="note">' + esc(s.cmErr) + "</div>";
   } else {
     var m = CMT[g.bi][g.c] || {};
-    var txt = cmTextFor(m[g.v], g.bi, cmLangKey(s));
-    body = txt
-      ? '<div class="egpara core">' + cmBody(txt) + "</div>" +
+    var r = cmResolve(m[g.v], g.bi, s);
+    body = r
+      ? (r.fb ? '<div class="egnote" style="margin-bottom:10px">' + esc(s.cmFallback) + "</div>" : "") +
+        '<div class="egpara core">' + cmBody(r.text) + "</div>" +
         '<div class="egnote">' + esc(s.cmNote) + "</div>"
       : '<div class="note">' + esc(s.cmErr) + "</div>";
   }
