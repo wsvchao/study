@@ -88,6 +88,8 @@ main{padding:18px 0 calc(104px * var(--fs))}
 .search{width:100%;padding:11px 14px;border-radius:11px;border:1px solid var(--rule);
   background:var(--surface);color:var(--ink);font:inherit;font-size:calc(15px * var(--fs));margin-bottom:6px}
 .search::placeholder{color:var(--faint)}
+/* 聖經全文搜尋：命中的字詞套一下底色，跟其他強調用色（brass）同一套 */
+.bqhit{background:var(--brass-soft);color:var(--brass-ink);border-radius:3px;padding:0 1px}
 .hint{color:var(--muted);font-size:calc(12.5px * var(--fs));line-height:1.55;margin:10px 2px 16px}
 .tlist{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--rule-soft);
   border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
@@ -572,6 +574,9 @@ var S = {
      "主耶穌！我當如何做，可使祢得榮耀？"],
    medPrayer:"我的禱告：",
    tabBible:"聖經", tabTopics:"主題", tabLib:"背誦庫", tabSet:"設定",
+   bibleSearchPh:"搜尋經文文字…", bibleSearchLoading:"第一次搜尋需要先載入整本聖經（只需一次，之後就存在手機裡）…",
+   bibleSearchCount:"共 %1 節", bibleSearchMore:"僅顯示前 200 節，請輸入更精確的字詞。",
+   bibleSearchEmpty:"沒有找到符合的經文。",
    bibleNote:"點書卷看各章；第一次讀某一卷需要連網，之後就存在手機裡，離線也讀得到。",
    bChapHint:"點一章直接讀整章經文。",
    bPickBtn:"挑選經文加入背誦庫", bPickTitle:"挑選經文",
@@ -689,6 +694,9 @@ var S = {
      "主耶稣！我当如何做，可使祢得荣耀？"],
    medPrayer:"我的祷告：",
    tabBible:"圣经", tabTopics:"主题", tabLib:"背诵库", tabSet:"设定",
+   bibleSearchPh:"搜索经文文字…", bibleSearchLoading:"第一次搜索需要先载入整本圣经（只需一次，之后就存在手机里）…",
+   bibleSearchCount:"共 %1 节", bibleSearchMore:"仅显示前 200 节，请输入更精确的字词。",
+   bibleSearchEmpty:"没有找到符合的经文。",
    bibleNote:"点书卷看各章；第一次读某一卷需要连网，之后就存在手机里，离线也读得到。",
    bChapHint:"点一章直接读整章经文。",
    bPickBtn:"挑选经文加入背诵库", bPickTitle:"挑选经文",
@@ -806,6 +814,9 @@ var S = {
      "Lord Jesus, what should I do so that You may be glorified?"],
    medPrayer:"My prayer:",
    tabBible:"Bible", tabTopics:"Topics", tabLib:"Memorize", tabSet:"Settings",
+   bibleSearchPh:"Search Bible text…", bibleSearchLoading:"Loading the whole Bible for search (only once, then kept on the device)…",
+   bibleSearchCount:"%1 verses", bibleSearchMore:"Showing the first 200 verses only -- try a more specific word or phrase.",
+   bibleSearchEmpty:"No matching verses found.",
    bibleNote:"Tap a book for its chapters. A book is fetched the first time you open it, then kept on the device for offline use.",
    bChapHint:"Tap a chapter to read it.",
    bPickBtn:"Pick verses to memorize", bPickTitle:"Pick verses",
@@ -1654,7 +1665,7 @@ var FS = [0.90, 1.00, 1.13, 1.28, 1.45];
 document.documentElement.setAttribute("data-theme","dark");
 try{ document.documentElement.style.colorScheme="dark"; }catch(e){}
 
-var st = { lang: P.lang||"zh", screen:"list", tid:null, q:"",
+var st = { lang: P.lang||"zh", screen:"list", tid:null, q:"", bq:"",
            seq:null, itemIdx:null, vd:null,
            sort: (P.sort==="za"||P.sort==="az") ? P.sort : "orig",
            /* default to the harder setting: hide the book name too */
@@ -1863,8 +1874,12 @@ function rangeAdd(o){
   return rr;
 }
 function viewBible(s){
+  var q=(st.bq||"").trim();
   return bar('<span class="bar-title">'+esc(s.tabBible)+"</span>")+
-    '<main><div class="wrap"><div class="bgrid">'+bookGridCells(s,"bbook")+"</div>"+
+    '<main><div class="wrap">'+
+    '<input class="search" id="bq" placeholder="'+esc(s.bibleSearchPh)+'" value="'+esc(st.bq||"")+'">'+
+    '<div id="biblesearchbox">'+bibleSearchBody(s)+"</div>"+
+    '<div id="biblegridbox" class="bgrid"'+(q?' style="display:none"':"")+'>'+bookGridCells(s,"bbook")+"</div>"+
     '<p class="foot" style="text-align:left">'+esc(s.bibleNote)+"</p></div></main>";
 }
 function viewBChap(s){
@@ -1907,6 +1922,82 @@ function loadBook(bi, cb){
     .then(function(r){ if(!r.ok) throw new Error("http"); return r.json(); })
     .then(function(j){ BIB[bi] = j; cb(null, j); })
     .catch(function(){ cb(1); });
+}
+/* ---- 聖經全文搜尋：「聖經」分頁書卷格子上方那個搜尋框 ----
+   平常每卷書都是點了才抓（離線省流量），但要搜整本聖經就得先把 66 卷全部
+   抓齊。第一次搜尋才觸發（不是一進「聖經」分頁就抓），抓過一次之後留在
+   BIB 記憶體裡，同一次使用期間（甚至下次開網頁，因為 bible/ 那層本來就有
+   長期快取）都不用再抓。 */
+function ensureBibleSearchReady(cb){
+  if(st.bibleAllLoaded) return cb();
+  if(st.bibleLoading){ (st.bibleLoadCbs = st.bibleLoadCbs || []).push(cb); return; }
+  st.bibleLoading = true; st.bibleLoadCbs = [cb];
+  var need = [];
+  for(var bi = 0; bi < BOOKS.length; bi++){ if(!BIB[bi]) need.push(bi); }
+  var left = need.length;
+  function finish(){
+    st.bibleAllLoaded = true; st.bibleLoading = false;
+    var cbs = st.bibleLoadCbs || []; st.bibleLoadCbs = [];
+    cbs.forEach(function(f){ f(); });
+  }
+  if(!left) return finish();
+  need.forEach(function(bi){ loadBook(bi, function(){ if(--left <= 0) finish(); }); });
+}
+/* 純文字比對（不分詞、不做同音／簡繁轉換），只在目前介面語言那一欄找；
+   物件的鍵（章、節）是純數字字串，JS 保證這種「陣列索引」鍵一定照數字大小
+   列舉，所以掃出來的結果本來就是書卷／章／節的正確順序，不必再另外排序。 */
+function bibleSearchHits(q, s){
+  var col = (s.key === "en") ? 2 : (s.key === "hans" ? 1 : 0);
+  var hits = [];
+  for(var bi = 0; bi < BOOKS.length; bi++){
+    var book = BIB[bi]; if(!book) continue;
+    for(var c in book){
+      var verses = book[c];
+      for(var v in verses){
+        var row = verses[v], txt = row && row[col];
+        if(txt && txt.indexOf(q) >= 0) hits.push({ bi: bi, c: +c, v: +v, text: txt });
+      }
+    }
+  }
+  return hits;
+}
+function hlQuery(text, q){
+  if(!q) return esc(text);
+  return String(text).split(q).map(function(p){ return esc(p); }).join('<span class="bqhit">' + esc(q) + "</span>");
+}
+function bibleSearchBody(s){
+  var q = (st.bq || "").trim();
+  if(!q) return "";
+  if(!st.bibleAllLoaded) return '<div class="chload">' + esc(s.bibleSearchLoading) + "</div>";
+  var hits = bibleSearchHits(q, s);
+  if(!hits.length) return '<p class="hint">' + esc(s.bibleSearchEmpty) + "</p>";
+  var CAP = 200, capped = hits.length > CAP, shown = hits.slice(0, CAP);
+  var rows = shown.map(function(h){
+    var ref = bookName(h.bi, s) + " " + h.c + ":" + h.v;
+    return '<button class="vrow" data-hit="' + h.bi + "." + h.c + "." + h.v + '">' +
+      '<span class="vkey">' + esc(ref) + "</span>" +
+      '<span class="vtext">' + hlQuery(h.text, q) + "</span></button>";
+  }).join("");
+  return '<div class="src" style="margin:0 0 6px">' + esc(t(s.bibleSearchCount, shown.length)) +
+    (capped ? " " + esc(s.bibleSearchMore) : "") + "</div>" + rows;
+}
+/* 跟 refreshList() 一樣的道理：只重畫結果那一小塊，輸入框本身不重建，
+   注音／拼音選字才不會被打斷。第一次真的打字搜尋才觸發載入整本聖經。 */
+function refreshBibleSearch(){
+  var box = document.getElementById("biblesearchbox");
+  if(!box) return;
+  var q = (st.bq || "").trim();
+  var grid = document.getElementById("biblegridbox");
+  if(grid) grid.style.display = q ? "none" : "";
+  if(q && !st.bibleAllLoaded){
+    box.innerHTML = bibleSearchBody(L());
+    ensureBibleSearchReady(function(){
+      var b2 = document.getElementById("biblesearchbox");
+      if(b2) b2.innerHTML = bibleSearchBody(L());
+    });
+    return;
+  }
+  box.innerHTML = bibleSearchBody(L());
 }
 function openChapter(bi, c, v){
   st.ch = { bi: bi, c: c, v: v || 0, loading: !BIB[bi], err: 0 };
@@ -2867,7 +2958,7 @@ function viewVerse(s){
 
 /* ---------------- events ---------------- */
 document.addEventListener("click",function(e){
-  var el=e.target.closest("[data-smark],[data-sall],[data-tab],[data-libpick],[data-pick],[data-pickok],[data-libopen],[data-libdrop],[data-libdeltoggle],[data-libdelpick],[data-fpopen],[data-fppick],[data-fpall],[data-fpok],[data-fpmodeitem],[data-fpmodetopic],[data-fpmodecustom],[data-fpmodecustomok],[data-taddmp],[data-mpsrc],[data-days],[data-daysok],[data-opench],[data-vscroll],[data-eg],[data-ctx],[data-chgo],[data-bbook],[data-bchap],[data-bv],[data-badd],[data-bpick],[data-pmode],[data-pbook],[data-pchap],[data-pv],[data-padd],[data-ctcreate],[data-ctrenopen],[data-ctrenok],[data-ctrencancel],[data-ctup],[data-ctdown],[data-ctrm],[data-ctedit],[data-taddtoggle],[data-tbook],[data-tchap],[data-tv],[data-tadd],[data-sort],[data-retry],[data-prev],[data-rseg],[data-refmask],[data-filt],[data-vfilt],[data-clear],[data-fs],[data-lang],[data-topic],[data-xref],[data-vpick],[data-back],[data-seq],[data-lv],[data-reveal],[data-mark],[data-restart],[data-item],[data-openv],[data-verse],[data-vlv],[data-vreveal],[data-vmark],[data-reshuffle],[data-nextv],[data-cm],[data-med],.blk,.sblk");
+  var el=e.target.closest("[data-smark],[data-sall],[data-tab],[data-libpick],[data-pick],[data-pickok],[data-libopen],[data-libdrop],[data-libdeltoggle],[data-libdelpick],[data-fpopen],[data-fppick],[data-fpall],[data-fpok],[data-fpmodeitem],[data-fpmodetopic],[data-fpmodecustom],[data-fpmodecustomok],[data-taddmp],[data-mpsrc],[data-days],[data-daysok],[data-opench],[data-vscroll],[data-eg],[data-ctx],[data-chgo],[data-bbook],[data-bchap],[data-bv],[data-badd],[data-bpick],[data-hit],[data-pmode],[data-pbook],[data-pchap],[data-pv],[data-padd],[data-ctcreate],[data-ctrenopen],[data-ctrenok],[data-ctrencancel],[data-ctup],[data-ctdown],[data-ctrm],[data-ctedit],[data-taddtoggle],[data-tbook],[data-tchap],[data-tv],[data-tadd],[data-sort],[data-retry],[data-prev],[data-rseg],[data-refmask],[data-filt],[data-vfilt],[data-clear],[data-fs],[data-lang],[data-topic],[data-xref],[data-vpick],[data-back],[data-seq],[data-lv],[data-reveal],[data-mark],[data-restart],[data-item],[data-openv],[data-verse],[data-vlv],[data-vreveal],[data-vmark],[data-reshuffle],[data-nextv],[data-cm],[data-med],.blk,.sblk");
   if(!el) return;
   var d=el.dataset;
   if(d.fs){
@@ -2993,6 +3084,11 @@ document.addEventListener("click",function(e){
   }
   if(d.bchap!==undefined){
     st.chFrom="bchap"; return openChapter(st.bi, +d.bchap, 0);
+  }
+  /* 搜尋結果：跳到那一節所在的整章，直接定位並亮起那一行 */
+  if(d.hit!==undefined){
+    var hp=d.hit.split("."), hbi=+hp[0], hc=+hp[1], hv=+hp[2];
+    st.bi=hbi; st.chFrom="bchap"; return openChapter(hbi, hc, hv);
   }
   if(d.bpick!==undefined){
     st.bp={ bi:st.ch.bi, c:st.ch.c, a:0, z:0 };
@@ -3266,7 +3362,7 @@ document.addEventListener("click",function(e){
   }
 });
 var composing=false;
-function isSearch(el){ return el && (el.id==="q" || el.id==="pq" || el.id==="mpq"); }
+function isSearch(el){ return el && (el.id==="q" || el.id==="pq" || el.id==="mpq" || el.id==="bq"); }
 document.addEventListener("compositionstart",function(e){
   if(isSearch(e.target)) composing=true;
 });
@@ -3278,12 +3374,14 @@ document.addEventListener("input",function(e){
   if(!isSearch(e.target)) return;
   if(e.target.id==="q") st.q=e.target.value;
   else if(e.target.id==="mpq") st.mpq=e.target.value;
+  else if(e.target.id==="bq") st.bq=e.target.value;
   else st.pq=e.target.value;
   if(composing || e.isComposing) return;   /* 組字中，等選完字再篩選 */
   searchInput(e.target);
 });
 function searchInput(el){
   if(el.id==="q"){ st.q=el.value; return refreshList(); }
+  if(el.id==="bq"){ st.bq=el.value; return refreshBibleSearch(); }
   if(el.id==="mpq"){
     st.mpq=el.value;
     var mbox=document.getElementById("pickbox");
