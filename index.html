@@ -2113,8 +2113,7 @@ function openAudio(bi, c){
   renderAudio();
 }
 function closeAudio(){
-  var el = document.getElementById("audioplayer");
-  var old = el && document.getElementById("chAudioEl");
+  var old = document.getElementById("chAudioEl");
   if(old){ try{ old.pause(); }catch(e){} }
   st.audio = null;
   renderAudio();
@@ -2125,47 +2124,36 @@ function advanceAudio(bi, c){
   var nc = audioAdjacent(bi, c, 1);
   if(nc != null) openAudio(bi, nc); else closeAudio();
 }
-function renderAudio(){
-  var el = document.getElementById("audioplayer");
-  if(!el) return;
-  if(!st.audio){
-    el.innerHTML = "";
-    try{ document.body.classList.remove("hasaudio"); }catch(e){}
-    return;
-  }
-  var a = st.audio;
-  var prevOk = audioAdjacent(a.bi, a.c, -1) != null;
-  var nextOk = audioAdjacent(a.bi, a.c, 1) != null;
+/* 建立播放器的固定外殼（只在從「關」變成「開」的那一刻做一次）：包含唯一一個、
+   從頭到尾都不會被砍掉重建的 <audio id="chAudioEl">。手機瀏覽器（尤其 iOS
+   Safari）對「自動播放」的允許，是跟著這個 DOM 元素本身走的：只要它是因為使用
+   者真的點擊過而開始播放的，之後就算用程式改它的 src 再呼叫 play()，也會被視為
+   同一個「已經被允許播放」的元素，可以無聲接續下去；但如果每次換章都整個砍掉、
+   重新 innerHTML 生一個新的 <audio> 節點，等於每次都是全新的元素，手機瀏覽器就
+   會把它當作沒有使用者手勢的自動播放而擋下來，這也是先前「一章讀完接下一章卻
+   沒有真的接著播」的根本原因。 */
+function buildAudioShell(el){
   el.innerHTML = '<div class="audiobar"><div class="wrap">' +
-    '<audio id="chAudioEl" preload="metadata" style="display:none" src="' + esc(a.url) + '"></audio>' +
-    '<div class="audiotop"><div class="audiolabel">' + esc(a.label) + "</div>" +
+    '<audio id="chAudioEl" preload="metadata" style="display:none"></audio>' +
+    '<div class="audiotop"><div class="audiolabel" id="audioLabel"></div>' +
     '<button class="aud-btn aud-stop" data-astop="1" aria-label="stop">' + AUD_ICON.stop + "</button></div>" +
     '<div class="audioscrub"><span class="audiotime" id="audioCur">0:00</span>' +
-    '<input type="range" class="audioseek" id="audioSeek" min="' + a.t + '" max="' + a.t + '" step="0.1" value="' + a.t + '" data-aseek="1">' +
+    '<input type="range" class="audioseek" id="audioSeek" min="0" max="0" step="0.1" value="0" data-aseek="1">' +
     '<span class="audiotime" id="audioDur">0:00</span></div>' +
     '<div class="audiobtns">' +
-    '<button class="aud-btn aud-side" data-aprev="1" aria-label="previous chapter"' + (prevOk ? "" : " disabled") + ">" + AUD_ICON.prev + "</button>" +
+    '<button class="aud-btn aud-side" id="audioPrevBtn" data-aprev="1" aria-label="previous chapter">' + AUD_ICON.prev + "</button>" +
     '<button class="aud-btn aud-play" id="audioPlayBtn" data-aplaypause="1" aria-label="play">' + AUD_ICON.play + "</button>" +
-    '<button class="aud-btn aud-side" data-anext="1" aria-label="next chapter"' + (nextOk ? "" : " disabled") + ">" + AUD_ICON.next + "</button>" +
+    '<button class="aud-btn aud-side" id="audioNextBtn" data-anext="1" aria-label="next chapter">' + AUD_ICON.next + "</button>" +
     "</div></div></div>";
-  try{ document.body.classList.add("hasaudio"); }catch(e){}
   var audioEl = document.getElementById("chAudioEl");
-  var seek = document.getElementById("audioSeek");
-  var curLbl = document.getElementById("audioCur");
-  var durLbl = document.getElementById("audioDur");
-  var playBtn = document.getElementById("audioPlayBtn");
-  if(!audioEl) return;
-  audioEl.addEventListener("loadedmetadata", function(){
-    try{ audioEl.currentTime = a.t; }catch(e){}
-    var dur = isFinite(audioEl.duration) ? audioEl.duration : a.t;
-    a.end = audioChapterEnd(a.bi, a.c, dur);
-    if(seek) seek.max = a.end;
-    if(durLbl) durLbl.textContent = fmtTime(a.end - a.t);
-    audioEl.play().catch(function(){});
-  }, {once:true});
+  /* 這幾個事件只在剛建立這個唯一的 <audio> 節點時綁一次；之後每次換章只換
+     src，不會重複綁定，也不會漏掉。裡面一律即時讀 st.audio，不要抓死當下的
+     值，因為同一個元素會被沿用到很多章之後。 */
   audioEl.addEventListener("timeupdate", function(){
-    if(st.audioSeeking) return;
+    var a = st.audio; if(!a || st.audioSeeking) return;
     var cur = audioEl.currentTime;
+    var seek = document.getElementById("audioSeek");
+    var curLbl = document.getElementById("audioCur");
     if(seek) seek.value = cur;
     if(curLbl) curLbl.textContent = fmtTime(cur - a.t);
     /* 到了這一章自己的結尾（不是整個檔案的結尾）就接著播下一章，不用等
@@ -2175,15 +2163,67 @@ function renderAudio(){
       advanceAudio(a.bi, a.c);
     }
   });
-  audioEl.addEventListener("play", function(){ if(playBtn) playBtn.innerHTML = AUD_ICON.pause; });
-  audioEl.addEventListener("pause", function(){ if(playBtn) playBtn.innerHTML = AUD_ICON.play; });
+  audioEl.addEventListener("play", function(){
+    var b = document.getElementById("audioPlayBtn"); if(b) b.innerHTML = AUD_ICON.pause;
+  });
+  audioEl.addEventListener("pause", function(){
+    var b = document.getElementById("audioPlayBtn"); if(b) b.innerHTML = AUD_ICON.play;
+  });
   audioEl.addEventListener("ended", function(){
     /* 保底：萬一 timeupdate 沒能剛好在結尾前觸發，這裡再接一次；已經接過
        （a.advancing）就不重複。 */
-    if(a.advancing) return;
+    var a = st.audio; if(!a || a.advancing) return;
     a.advancing = true;
     advanceAudio(a.bi, a.c);
   });
+}
+/* 換章節時要更新的畫面小地方：標籤文字、上一章/下一章按鈕能不能按。這些是
+   常駐按鈕本身（不是整個播放器）的更新，不會動到 <audio> 節點。 */
+function refreshAudioChrome(){
+  var a = st.audio; if(!a) return;
+  var lbl = document.getElementById("audioLabel");
+  if(lbl) lbl.textContent = a.label;
+  var prevBtn = document.getElementById("audioPrevBtn");
+  var nextBtn = document.getElementById("audioNextBtn");
+  if(prevBtn) prevBtn.disabled = audioAdjacent(a.bi, a.c, -1) == null;
+  if(nextBtn) nextBtn.disabled = audioAdjacent(a.bi, a.c, 1) == null;
+}
+/* 真正去換這一章的音檔：沿用同一個 <audio> 節點，只換 src，讀完 metadata 後
+   把游標定位到這一章的起點、算出這一章自己的結尾與長度，然後繼續播放。 */
+function loadAudioForCurrent(){
+  var audioEl = document.getElementById("chAudioEl");
+  var a = st.audio;
+  if(!audioEl || !a) return;
+  var seek = document.getElementById("audioSeek");
+  var curLbl = document.getElementById("audioCur");
+  var durLbl = document.getElementById("audioDur");
+  if(seek){ seek.min = a.t; seek.max = a.t; seek.value = a.t; }
+  if(curLbl) curLbl.textContent = "0:00";
+  if(durLbl) durLbl.textContent = "0:00";
+  audioEl.src = a.url;
+  audioEl.addEventListener("loadedmetadata", function(){
+    if(st.audio !== a) return; /* 這段 metadata 載入完成時，可能使用者已經又換到別章了 */
+    try{ audioEl.currentTime = a.t; }catch(e){}
+    var dur = isFinite(audioEl.duration) ? audioEl.duration : a.t;
+    a.end = audioChapterEnd(a.bi, a.c, dur);
+    if(seek){ seek.min = a.t; seek.max = a.end; seek.value = a.t; }
+    if(durLbl) durLbl.textContent = fmtTime(a.end - a.t);
+    audioEl.play().catch(function(){});
+  }, {once:true});
+  audioEl.load();
+}
+function renderAudio(){
+  var el = document.getElementById("audioplayer");
+  if(!el) return;
+  if(!st.audio){
+    el.innerHTML = "";
+    try{ document.body.classList.remove("hasaudio"); }catch(e){}
+    return;
+  }
+  if(!document.getElementById("chAudioEl")) buildAudioShell(el);
+  try{ document.body.classList.add("hasaudio"); }catch(e){}
+  refreshAudioChrome();
+  loadAudioForCurrent();
 }
 
 /* 挑經文時要先把整卷抓來（節數才知道），但不像 openChapter 那樣切換畫面 —
