@@ -240,7 +240,7 @@ body.hastab.hasfoot main{padding-bottom:174px}
 .audiotime{font-size:calc(11px * var(--fs));color:var(--muted);min-width:34px;text-align:center;
   font-variant-numeric:tabular-nums}
 .audioseek{flex:1 1 auto;min-width:0;height:20px;accent-color:var(--brass)}
-.audiobtns{display:flex;align-items:center;justify-content:center;gap:22px}
+.audiobtns{display:flex;align-items:center;justify-content:center;gap:10px}
 .aud-btn{display:flex;align-items:center;justify-content:center;background:transparent;
   border:none;color:var(--brass-ink);padding:4px;cursor:pointer}
 .aud-btn[disabled]{color:var(--muted);opacity:.35;cursor:default}
@@ -2097,7 +2097,13 @@ var AUD_ICON = {
   pause: '<svg viewBox="0 0 24 24" width="24" height="24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>',
   stop:  '<svg viewBox="0 0 24 24" width="16" height="16"><rect x="5" y="5" width="14" height="14" fill="currentColor"/></svg>',
   prev:  '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 5h2.2v14H6zM19 5L9 12l10 7z" fill="currentColor"/></svg>',
-  next:  '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M15.8 5H18v14h-2.2zM5 5l10 7-10 7z" fill="currentColor"/></svg>'
+  next:  '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M15.8 5H18v14h-2.2zM5 5l10 7-10 7z" fill="currentColor"/></svg>',
+  back5: '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 5A7 7 0 1 0 19 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '<polygon points="12,1.5 12,8.5 6.5,5" fill="currentColor"/>' +
+    '<text x="12" y="16.5" text-anchor="middle" font-size="7.5" font-weight="700" fill="currentColor" font-family="sans-serif">5</text></svg>',
+  fwd5:  '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 5A7 7 0 1 1 5 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '<polygon points="12,1.5 12,8.5 17.5,5" fill="currentColor"/>' +
+    '<text x="12" y="16.5" text-anchor="middle" font-size="7.5" font-weight="700" fill="currentColor" font-family="sans-serif">5</text></svg>'
 };
 function openAudio(bi, c){
   var info = audioInfo(bi, c); if(!info) return;
@@ -2141,9 +2147,11 @@ function buildAudioShell(el){
     '<input type="range" class="audioseek" id="audioSeek" min="0" max="0" step="0.1" value="0" data-aseek="1">' +
     '<span class="audiotime" id="audioDur">0:00</span></div>' +
     '<div class="audiobtns">' +
+    '<button class="aud-btn aud-side" data-askip="-5" aria-label="back 5 seconds">' + AUD_ICON.back5 + "</button>" +
     '<button class="aud-btn aud-side" id="audioPrevBtn" data-aprev="1" aria-label="previous chapter">' + AUD_ICON.prev + "</button>" +
     '<button class="aud-btn aud-play" id="audioPlayBtn" data-aplaypause="1" aria-label="play">' + AUD_ICON.play + "</button>" +
     '<button class="aud-btn aud-side" id="audioNextBtn" data-anext="1" aria-label="next chapter">' + AUD_ICON.next + "</button>" +
+    '<button class="aud-btn aud-side" data-askip="5" aria-label="forward 5 seconds">' + AUD_ICON.fwd5 + "</button>" +
     "</div></div></div>";
   var audioEl = document.getElementById("chAudioEl");
   /* 這幾個事件只在剛建立這個唯一的 <audio> 節點時綁一次；之後每次換章只換
@@ -2189,11 +2197,15 @@ function refreshAudioChrome(){
   if(nextBtn) nextBtn.disabled = audioAdjacent(a.bi, a.c, 1) == null;
 }
 /* 真正去換這一章的音檔：沿用同一個 <audio> 節點，只換 src，讀完 metadata 後
-   把游標定位到這一章的起點、算出這一章自己的結尾與長度，然後繼續播放。 */
+   把游標定位到這一章的起點、算出這一章自己的結尾與長度，然後繼續播放。
+   換之前先明確 pause() 一次——理論上改 src 就會讓舊的播放停止，但保險起見
+   （尤其連續快速切章、或手機瀏覽器對「換來源那一刻」處理得不夠即時的情況）
+   還是先明確叫它停，確保不會有新舊兩段音檔重疊在一起的聲音。 */
 function loadAudioForCurrent(){
   var audioEl = document.getElementById("chAudioEl");
   var a = st.audio;
   if(!audioEl || !a) return;
+  try{ audioEl.pause(); }catch(e){}
   var seek = document.getElementById("audioSeek");
   var curLbl = document.getElementById("audioCur");
   var durLbl = document.getElementById("audioDur");
@@ -2212,6 +2224,32 @@ function loadAudioForCurrent(){
   }, {once:true});
   audioEl.load();
 }
+/* 倒轉／快轉 5 秒；固定夾在這一章自己的範圍內（不會轉到上一章結尾或下一章開頭
+   去），沒有 a.end（metadata 還沒載完）就只擋下限。畫面上的進度條跟時間文字
+   立刻跟著更新，不用等下一次 timeupdate。 */
+function skipAudio(delta){
+  var audioEl = document.getElementById("chAudioEl");
+  var a = st.audio;
+  if(!audioEl || !a) return;
+  var lo = a.t, hi = (a.end != null) ? a.end : Infinity;
+  var nt = audioEl.currentTime + delta;
+  if(nt < lo) nt = lo;
+  if(nt > hi) nt = hi;
+  try{ audioEl.currentTime = nt; }catch(e){}
+  var seek = document.getElementById("audioSeek");
+  var curLbl = document.getElementById("audioCur");
+  if(seek) seek.value = nt;
+  if(curLbl) curLbl.textContent = fmtTime(nt - a.t);
+}
+/* 保底：這個分頁真的要被卸載、或被瀏覽器凍結進 bfcache（比如切到別的網址、
+   或整個頁面被系統背景凍結）的時候，把音檔停掉。這是為了避免「舊的分頁/頁面
+   實例其實還在背景播放，切去新頁面又開了另一段」導致同時聽到兩段朗讀重疊的
+   情況——同一頁內部换章節、切換分頁瀏覽都不會觸發這個，只有真的要離開/卸載
+   這個頁面實例時才會。 */
+window.addEventListener("pagehide", function(){
+  var ae = document.getElementById("chAudioEl");
+  if(ae){ try{ ae.pause(); }catch(e){} }
+});
 function renderAudio(){
   var el = document.getElementById("audioplayer");
   if(!el) return;
@@ -3177,7 +3215,7 @@ function viewVerse(s){
 
 /* ---------------- events ---------------- */
 document.addEventListener("click",function(e){
-  var el=e.target.closest("[data-smark],[data-sall],[data-tab],[data-libpick],[data-pick],[data-pickok],[data-libopen],[data-libdrop],[data-libdeltoggle],[data-libdelpick],[data-fpopen],[data-fppick],[data-fpall],[data-fpok],[data-fpmodeitem],[data-fpmodetopic],[data-fpmodecustom],[data-fpmodecustomok],[data-taddmp],[data-mpsrc],[data-days],[data-daysok],[data-opench],[data-vscroll],[data-eg],[data-ctx],[data-chgo],[data-bbook],[data-bchap],[data-bv],[data-badd],[data-bpick],[data-hit],[data-pmode],[data-pbook],[data-pchap],[data-pv],[data-padd],[data-ctcreate],[data-ctrenopen],[data-ctrenok],[data-ctrencancel],[data-ctup],[data-ctdown],[data-ctrm],[data-ctedit],[data-taddtoggle],[data-tbook],[data-tchap],[data-tv],[data-tadd],[data-sort],[data-retry],[data-prev],[data-rseg],[data-refmask],[data-filt],[data-vfilt],[data-clear],[data-fs],[data-lang],[data-topic],[data-xref],[data-vpick],[data-back],[data-seq],[data-lv],[data-reveal],[data-mark],[data-restart],[data-item],[data-openv],[data-verse],[data-vlv],[data-vreveal],[data-vmark],[data-reshuffle],[data-nextv],[data-cm],[data-audio],[data-astop],[data-aprev],[data-anext],[data-aplaypause],[data-med],.blk,.sblk");
+  var el=e.target.closest("[data-smark],[data-sall],[data-tab],[data-libpick],[data-pick],[data-pickok],[data-libopen],[data-libdrop],[data-libdeltoggle],[data-libdelpick],[data-fpopen],[data-fppick],[data-fpall],[data-fpok],[data-fpmodeitem],[data-fpmodetopic],[data-fpmodecustom],[data-fpmodecustomok],[data-taddmp],[data-mpsrc],[data-days],[data-daysok],[data-opench],[data-vscroll],[data-eg],[data-ctx],[data-chgo],[data-bbook],[data-bchap],[data-bv],[data-badd],[data-bpick],[data-hit],[data-pmode],[data-pbook],[data-pchap],[data-pv],[data-padd],[data-ctcreate],[data-ctrenopen],[data-ctrenok],[data-ctrencancel],[data-ctup],[data-ctdown],[data-ctrm],[data-ctedit],[data-taddtoggle],[data-tbook],[data-tchap],[data-tv],[data-tadd],[data-sort],[data-retry],[data-prev],[data-rseg],[data-refmask],[data-filt],[data-vfilt],[data-clear],[data-fs],[data-lang],[data-topic],[data-xref],[data-vpick],[data-back],[data-seq],[data-lv],[data-reveal],[data-mark],[data-restart],[data-item],[data-openv],[data-verse],[data-vlv],[data-vreveal],[data-vmark],[data-reshuffle],[data-nextv],[data-cm],[data-audio],[data-astop],[data-aprev],[data-anext],[data-aplaypause],[data-askip],[data-med],.blk,.sblk");
   if(!el) return;
   var d=el.dataset;
   if(d.fs){
@@ -3335,6 +3373,7 @@ document.addEventListener("click",function(e){
     if(nc2!=null) openAudio(st.audio.bi, nc2);
     return;
   }
+  if(d.askip!==undefined){ skipAudio(+d.askip); return; }
   if(d.bv!==undefined){
     rangeTap(st.bp, +d.bv);
     st.bAdded=""; st.keepScroll=window.scrollY; return render();
