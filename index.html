@@ -223,16 +223,19 @@ main{padding:18px 0 calc(104px * var(--fs))}
 body.hastab main{padding-bottom:102px}
 body.hastab .footbar{bottom:calc(54px + env(safe-area-inset-bottom))}
 body.hastab.hasfoot main{padding-bottom:174px}
-/* ---- 英文朗讀（KJV）常駐播放器：疊在分頁列上方，跟 footbar 同一層邏輯 ---- */
+/* ---- 英文朗讀（KJV）常駐播放器：疊在分頁列上方，跟 footbar 同一層邏輯 ----
+   刻意跟分頁列之間留 8px 間隙（bottom 多加 8px、並用圓角+陰影跟下面的分頁列
+   區隔開），避免播放器貼著或蓋到 Bible/Topics/Memorize/Settings 四個按鈕的上緣 */
 .audiobar{position:fixed;left:0;right:0;z-index:41;
-  bottom:calc(54px + env(safe-area-inset-bottom));
-  background:color-mix(in srgb,var(--surface) 96%,transparent);backdrop-filter:blur(12px);
-  border-top:1px solid var(--brass-line);padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
+  bottom:calc(54px + env(safe-area-inset-bottom) + 8px);
+  background:var(--surface);
+  border:1px solid var(--brass-line);border-radius:14px;
+  box-shadow:0 4px 14px rgba(0,0,0,.22);
+  margin:0 8px;padding:8px 12px}
 .audiobar .wrap{display:flex;flex-direction:column;gap:4px}
 .audiotop{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .audiolabel{font-size:calc(13px * var(--fs));color:var(--brass-ink);white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;max-width:70vw}
-.audioicon{margin-right:4px}
 .audioscrub{display:flex;align-items:center;gap:8px}
 .audiotime{font-size:calc(11px * var(--fs));color:var(--muted);min-width:34px;text-align:center;
   font-variant-numeric:tabular-nums}
@@ -245,9 +248,9 @@ body.hastab.hasfoot main{padding-bottom:174px}
 .aud-play{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--brass-line);
   background:var(--brass-soft)}
 .aud-stop{width:26px;height:26px;color:var(--muted)}
-body.hasaudio.hastab main{padding-bottom:212px}
-body.hasaudio.hastab.hasfoot main{padding-bottom:284px}
-body.hasaudio.hastab .footbar{bottom:calc(152px + env(safe-area-inset-bottom))}
+body.hasaudio.hastab main{padding-bottom:230px}
+body.hasaudio.hastab.hasfoot main{padding-bottom:302px}
+body.hasaudio.hastab .footbar{bottom:calc(182px + env(safe-area-inset-bottom))}
 .fab{position:fixed;right:20px;z-index:41;width:54px;height:54px;border-radius:50%;
   bottom:calc(74px + env(safe-area-inset-bottom));
   background:var(--brass);color:var(--ground);font-size:26px;line-height:1;font-weight:400;
@@ -2068,6 +2071,18 @@ function audioAdjacent(bi, c, dir){
   }
   return null;
 }
+/* 這一章「自己」的音檔結束時間點：如果下一章（章數緊接著的那一章，不管有沒有
+   資料）剛好也在同一個原始檔案裡，那這一章就在下一章開始的地方結束；否則（換
+   檔案了，或還沒有下一章的資料）就以整個檔案的長度（fallbackDuration，通常是
+   audioEl.duration）當作這一章的結尾。這樣顯示出來的「音檔總長」才會是這一章
+   自己的長度，而不是整個原始錄音檔案的長度。 */
+function audioChapterEnd(bi, c, fallbackDuration){
+  var cur = audioEntry(bi, c);
+  if(!cur) return fallbackDuration;
+  var nxt = audioEntry(bi, c + 1);
+  if(nxt && nxt[0] === cur[0]) return nxt[1];
+  return fallbackDuration;
+}
 function fmtTime(sec){
   if(!isFinite(sec) || sec < 0) sec = 0;
   sec = Math.floor(sec);
@@ -2086,7 +2101,15 @@ var AUD_ICON = {
 };
 function openAudio(bi, c){
   var info = audioInfo(bi, c); if(!info) return;
-  st.audio = { bi: bi, c: c, url: info.url, t: info.t, label: bookName(bi, L()) + " " + c };
+  st.audio = { bi: bi, c: c, url: info.url, t: info.t, end: null, advancing: false,
+    label: bookName(bi, L()) + " " + c };
+  /* 讓經文畫面跟著朗讀章節走：按上一章/下一章、或一章讀完自動接下一章時，
+     畫面會自動切換到那一章的經文頁面。如果本來就已經在看這一章（比如剛點
+     「Listen」按鈕），就不用重畫，避免畫面無謂地跳回頂端。openChapter() 只
+     會重畫 #app，播放器（#audioplayer，在 #app 之外）不受影響。 */
+  if(!st.ch || st.ch.bi !== bi || st.ch.c !== c){
+    openChapter(bi, c);
+  }
   renderAudio();
 }
 function closeAudio(){
@@ -2095,6 +2118,12 @@ function closeAudio(){
   if(old){ try{ old.pause(); }catch(e){} }
   st.audio = null;
   renderAudio();
+}
+/* 一章讀完了（不管是真的到了整個原始檔案結尾，還是這一章在檔案「中間」就結束、
+   接著是下一章的朗讀）：接著播放下一個「有資料」的章節；找不到就收起播放器。 */
+function advanceAudio(bi, c){
+  var nc = audioAdjacent(bi, c, 1);
+  if(nc != null) openAudio(bi, nc); else closeAudio();
 }
 function renderAudio(){
   var el = document.getElementById("audioplayer");
@@ -2109,7 +2138,7 @@ function renderAudio(){
   var nextOk = audioAdjacent(a.bi, a.c, 1) != null;
   el.innerHTML = '<div class="audiobar"><div class="wrap">' +
     '<audio id="chAudioEl" preload="metadata" style="display:none" src="' + esc(a.url) + '"></audio>' +
-    '<div class="audiotop"><div class="audiolabel"><span class="audioicon">&#128266;</span>' + esc(a.label) + "</div>" +
+    '<div class="audiotop"><div class="audiolabel">' + esc(a.label) + "</div>" +
     '<button class="aud-btn aud-stop" data-astop="1" aria-label="stop">' + AUD_ICON.stop + "</button></div>" +
     '<div class="audioscrub"><span class="audiotime" id="audioCur">0:00</span>' +
     '<input type="range" class="audioseek" id="audioSeek" min="' + a.t + '" max="' + a.t + '" step="0.1" value="' + a.t + '" data-aseek="1">' +
@@ -2128,20 +2157,32 @@ function renderAudio(){
   if(!audioEl) return;
   audioEl.addEventListener("loadedmetadata", function(){
     try{ audioEl.currentTime = a.t; }catch(e){}
-    if(seek) seek.max = isFinite(audioEl.duration) ? audioEl.duration : 0;
-    if(durLbl) durLbl.textContent = fmtTime(audioEl.duration - a.t);
+    var dur = isFinite(audioEl.duration) ? audioEl.duration : a.t;
+    a.end = audioChapterEnd(a.bi, a.c, dur);
+    if(seek) seek.max = a.end;
+    if(durLbl) durLbl.textContent = fmtTime(a.end - a.t);
     audioEl.play().catch(function(){});
   }, {once:true});
   audioEl.addEventListener("timeupdate", function(){
     if(st.audioSeeking) return;
-    if(seek) seek.value = audioEl.currentTime;
-    if(curLbl) curLbl.textContent = fmtTime(audioEl.currentTime - a.t);
+    var cur = audioEl.currentTime;
+    if(seek) seek.value = cur;
+    if(curLbl) curLbl.textContent = fmtTime(cur - a.t);
+    /* 到了這一章自己的結尾（不是整個檔案的結尾）就接著播下一章，不用等
+       原生 <audio> 的 ended 事件（那個只會在整個檔案播完時才觸發）。 */
+    if(a.end != null && !a.advancing && cur >= a.end - 0.12){
+      a.advancing = true;
+      advanceAudio(a.bi, a.c);
+    }
   });
   audioEl.addEventListener("play", function(){ if(playBtn) playBtn.innerHTML = AUD_ICON.pause; });
   audioEl.addEventListener("pause", function(){ if(playBtn) playBtn.innerHTML = AUD_ICON.play; });
   audioEl.addEventListener("ended", function(){
-    var nc = audioAdjacent(a.bi, a.c, 1);
-    if(nc != null) openAudio(a.bi, nc); else closeAudio();
+    /* 保底：萬一 timeupdate 沒能剛好在結尾前觸發，這裡再接一次；已經接過
+       （a.advancing）就不重複。 */
+    if(a.advancing) return;
+    a.advancing = true;
+    advanceAudio(a.bi, a.c);
   });
 }
 
@@ -2188,7 +2229,7 @@ function viewChapter(s){
   /* 英文朗讀（KJV，LibriVox）：只有英文介面、而且這一章剛好有錄音時間碼資料才出現 */
   var audioBtn = (s.key === "en" && readable && audioAvail(ch.bi, ch.c))
     ? '<button class="btn btn-wide" style="margin-bottom:16px" data-audio="' + ch.bi + "." + ch.c + '">' +
-      "&#128266;&nbsp;" + esc(s.audioBtn) + "</button>" : "";
+      esc(s.audioBtn) + "</button>" : "";
   return bar(backBtn(s) + '<span class="bar-title">' + esc(title) + "</span>") +
     '<main><div class="wrap"><div class="thead"><h1>' + esc(title) + "</h1>" +
     '<div class="src">' + esc(s.ctxOnce) + "</div>" +
