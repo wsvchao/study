@@ -527,6 +527,8 @@ p.cmp b{color:var(--brass-ink);font-weight:700}
 .cmx{color:var(--sage);border-bottom:1px dotted var(--sage);cursor:pointer;padding:3px 0;margin:-3px 0;-webkit-tap-highlight-color:transparent}
 .cmx.xc{border-bottom-style:solid}
 .cmx:active{background:var(--sage-soft)}
+.egwlk{color:var(--brass);text-decoration:none;border-bottom:1px dotted var(--brass);padding:3px 0;margin:-3px 0}
+.egwlk:active{opacity:.6}
 .cmback{display:inline-flex;align-items:center;gap:4px;margin:0 0 12px;padding:6px 12px;border-radius:999px;border:1px solid var(--brass-line);background:transparent;color:var(--brass-ink);font-size:calc(13px * var(--fs))}
 #cmref{position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;flex-direction:column;max-height:60vh;
   background:var(--surface);border-top:2px solid var(--brass);border-radius:16px 16px 0 0;
@@ -2682,7 +2684,45 @@ function cmLink(h, bi0, ch0){
   if(!store.length) return out;
   return out.replace(/\u0001(\d+)\u0002/g, function(a, n){ return store[+n]; });
 }
-function cmBoldify(t, bi, ch){ return cmLink(esc(t), bi, ch).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
+/* ---- 注釋裡的懷著引用 → EGW 閱讀器連結 ----
+   中文：《給傳道人的證言》第518頁、《證言》卷五第729頁；英文：(PP 95)、(1T 265)。
+   頁碼是英文原版的頁碼，EGW 閱讀器依這個頁碼跳到該頁。書名對照表已用經文比對驗證過。 */
+var EGWZ = {"先祖與先知":"PP","先祖和先知":"PP","先知與君王":"PK","先知和君王":"PK","歷代願望":"DA","使徒行述":"AA","善惡之爭":"GC",
+  "服務真詮":"MH","基督比喻實訓":"COL","教育論":"Ed","給傳道人的證言":"TM","救贖的故事":"SR","基督教育原理":"FE","基督教育之研究":"CT",
+  "拾級就主":"SC","拾級救主":"SC","喜樂的泉源":"SC","早期著作":"EW","福山寶訓":"MB","佈道論":"Ev","傳道論":"Ev","傳道良助":"GW",
+  "醫療佈道論":"MM","成聖的人生":"SL","成聖的生活":"SL","健康勉言":"CH","衛生勉言":"CH","論飲食":"CD","復臨信徒家庭":"AH","復臨信徒的家庭":"AH",
+  "論節制":"Te","懷愛倫傳略":"LS","懷氏傳略":"LS","論福利工作":"WM","福利工作":"WM","安息日學訓言":"CSW","安息日學工作的勉言":"CSW",
+  "兒童教育指南":"CG","給管家的勉言":"CS","論管家":"CS","對作者和編輯的勉言":"CW","編輯寫作勉言":"CW","給編輯和作者的勉言":"CW",
+  "文字佈道":"CM","文字佈道士":"CEv","基督徒的服務":"ChS","基督徒服務大全":"ChS","給青年人的信息":"MYP","給青年的信息":"MYP","給青年人信息":"MYP","告青年書":"MYP",
+  "基督徒節制和聖經衛生":"CTBH"};
+var EGWV = {"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8,"九":9};
+var EGW_ZRE = /《([^》<]{2,12})》\s*((?:卷|第)[一二三四五六七八九]卷?)?\s*(?:第\s*)?(\d{1,4})((?:\s*[-–—,，、]\s*\d{1,4})*)\s*頁?/g;
+var EGW_ERE = /\b(PP|PK|DA|AA|GC|MH|COL|Ed|SC|MB|EW|SR|TM|FE|CT|CH|CD|AH|CG|Ev|GW|MM|Te|LS|WM|ChS|CS|CW|CM|SL|MYP|CSW|[1-9]T)\s(\d{1,3})(?![\d:])/g;
+function egwHref(code, page){ return EGW_URL + "#/b/" + code + "/" + page; }
+function egwLinks(h){
+  if(h.indexOf("《") >= 0){
+    h = h.replace(EGW_ZRE, function(all, title, vol, page){
+      var code = EGWZ[title];
+      if(!code && (title === "證言" || title === "教會證言")){
+        var n = vol ? EGWV[vol.replace(/[卷第]/g, "")] : 0;
+        if(!n) return all;
+        code = n + "T";
+      }
+      if(!code) return all;
+      return '<a class="egwlk" href="' + egwHref(code, page) + '" target="_blank" rel="noopener">' + all + "</a>";
+    });
+  }
+  if(/\b(PP|PK|DA|AA|GC|MH|COL|Ed|SC|MB|EW|SR|TM|FE|CT|CH|CD|AH|CG|Ev|GW|MM|Te|LS|WM|ChS|CS|CW|CM|SL|MYP|CSW|[1-9]T)\s\d/.test(h)){
+    h = h.replace(/(<a [^>]*>.*?<\/a>)|(\([^()<]{2,90}\))/g, function(all, a, par){
+      if(a) return a;
+      return par.replace(EGW_ERE, function(m, code, page){
+        return '<a class="egwlk" href="' + egwHref(code, page) + '" target="_blank" rel="noopener">' + m + "</a>";
+      });
+    });
+  }
+  return h;
+}
+function cmBoldify(t, bi, ch){ return egwLinks(cmLink(esc(t), bi, ch)).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
 function cmBody(txt, bi, ch, noq){
   var qi = noq ? -1 : txt.indexOf("\n\n");   /* 序言、補充註釋沒有經文引文，整段都是註釋 */
   var quote = "", rest = txt;
@@ -3393,7 +3433,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v85", APP_DATE = "2026-10-04";
+var APP_VER = "study-v86", APP_DATE = "2026-10-04";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
