@@ -2588,7 +2588,7 @@ function xrefTable(){
   return (XT = { map: map, re: re });
 }
 var XGAP = /^(?:[\s;\uff1b,\uff0c\u3001\u548c\u53ca\u8207\u4e0e\u6216\u53c8\u898b\u89c1\u53c3\u53c2\uff08(]|see|also|cf\.?|and|or|on|v\.|vs\.)*$/i;
-function cmLink(h, bi0){
+function cmLink0(h, bi0){
   if(bi0 == null) return h;
   h = h.replace(/@([^@\n]{1,40})@/g, "$1");          /* 中文原稿用 @太10:6@ 標出註釋互相參照，@ 本身不顯示 */
   if(!/[:\uff1a]/.test(h)) return h;
@@ -2630,14 +2630,65 @@ function cmLink(h, bi0){
   });
   return out + h.slice(pos);
 }
-function cmBoldify(t, bi){ return cmLink(esc(t), bi).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
-function cmBody(txt, bi){
-  var qi = txt.indexOf("\n\n");
+/* ---- 「見…補充註釋」→ 連到那一章的補充註釋（key 卷.章.900） ----
+   先把補充註釋的說法換成暫時記號，經文連結跑完再換回來，免得兩種連結互相干擾。 */
+var CNN = { "\u4e00":1, "\u4e8c":2, "\u4e09":3, "\u56db":4, "\u4e94":5, "\u516d":6, "\u4e03":7, "\u516b":8, "\u4e5d":9 };
+function cnNum(x){
+  if(/^\d+$/.test(x)) return +x;
+  var t = 0, c = 0;
+  for(var i = 0; i < x.length; i++){
+    var ch = x.charAt(i);
+    if(ch === "\u767e"){ t += (c || 1) * 100; c = 0; }
+    else if(ch === "\u5341"){ t += (c || 1) * 10; c = 0; }
+    else if(CNN[ch]) c = CNN[ch];
+  }
+  return t + c;
+}
+var SUPP_RE = /(?:本(?:章|篇)(?:後面|結尾|後|末)?的?補充註釋(?:\s?[一二三四1-4])?)|(?:(《[^》]{1,10}》)?([一-鿿]{0,4}?)\s*(第?\s*)([一二三四五六七八九十百零]{1,5}|\d{1,3})\s*(?:章|篇)的?補充註釋(?:\s?[一二三四1-4])?)/g;
+function cmLinkSupp(h, bi0, ch0, store){
+  if(h.indexOf("\u88dc\u5145\u8a3b\u91cb") < 0) return h;
+  var T = xrefTable();
+  return h.replace(SUPP_RE, function(all, bq, pre, di, num, off){
+    var bi = bi0, ch = ch0, lead = "", shown = all;
+    if(all.charAt(0) === "\u672c"){ /* 本章／本篇補充註釋 */
+      if(bi0 == null || !(ch0 > 0)) return all;
+    } else {
+      ch = cnNum(num); if(!(ch > 0)) return all;
+      if(bq){
+        var nm = bq.slice(1, -1); if(!(nm in T.map)) return all;
+        bi = T.map[nm];
+      } else if(pre){
+        var found = -1, k;
+        for(k = 0; k < pre.length; k++) if(pre.slice(k) in T.map){ found = k; break; }
+        if(found < 0){ /* 前面不是書名（例如「見」「又見」）：整段都當說明文字，書卷沿用目前這卷 */
+          lead = pre; shown = all.slice(pre.length);
+        } else { bi = T.map[pre.slice(found)]; lead = pre.slice(0, found); shown = all.slice(lead.length); }
+      }
+      if(bq && pre){ lead = pre; shown = all.slice(pre.length); bi = T.map[bq.slice(1, -1)]; }
+    }
+    if(bi == null) return all;
+    var ws = shown.match(/^\s+/); if(ws){ lead += ws[0]; shown = shown.slice(ws[0].length); }
+    var key = bi + "." + ch + ".900";
+    if(!cmAvail(key, L())) return all;
+    store.push('<span class="cmx xc" role="button" tabindex="0" data-xr="' + key + '" data-xl="" data-xc="1">' + shown + "</span>");
+    return lead + "\u0001" + (store.length - 1) + "\u0002";
+  });
+}
+function cmLink(h, bi0, ch0){
+  var store = [];
+  var h2 = cmLinkSupp(h, bi0, ch0, store);
+  var out = cmLink0(h2, bi0);
+  if(!store.length) return out;
+  return out.replace(/\u0001(\d+)\u0002/g, function(a, n){ return store[+n]; });
+}
+function cmBoldify(t, bi, ch){ return cmLink(esc(t), bi, ch).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
+function cmBody(txt, bi, ch, noq){
+  var qi = noq ? -1 : txt.indexOf("\n\n");   /* 序言、補充註釋沒有經文引文，整段都是註釋 */
   var quote = "", rest = txt;
   if(qi >= 0){ quote = txt.slice(0, qi); rest = txt.slice(qi + 2); }
   var paras = rest.split("\n").filter(function(p){ return p.length; });
   return (quote ? '<p class="cmquote">' + cmBoldify(quote) + "</p>" : "") +
-    paras.map(function(p){ return '<p class="cmp">' + cmBoldify(p, bi) + "</p>"; }).join("");
+    paras.map(function(p){ return '<p class="cmp">' + cmBoldify(p, bi, ch) + "</p>"; }).join("");
 }
 /* ---- 聖經頁的注釋面板（從底部滑出，經文留在上方） ----
    面板是 #app 外面的常駐元素（跟朗讀播放器一樣），換章、換語言重畫 #app 都不會把它弄丟；
@@ -2714,7 +2765,7 @@ function cmSheetRender(){
     var r = cmResolve(m[g.v], bi, s);
     body = r
       ? (r.fb ? '<div class="egnote" style="margin:0 0 12px;padding-top:0;border-top:0">' + esc(s.cmFallback) + "</div>" : "") +
-        '<div class="egpara core">' + cmBody(r.text, bi) + "</div>"
+        '<div class="egpara core">' + cmBody(r.text, bi, +g.c, g.c === "0" || +g.v === 0 || +g.v >= 900) + "</div>"
       : '<div class="note">' + esc(s.cmErr) + "</div>";
   }
   var hasPrev = cmAdj(g.k, -1) != null, hasNext = cmAdj(g.k, 1) != null, backBtn = "";
@@ -2884,7 +2935,7 @@ function viewCm(s){
     var r = cmResolve(m[g.v], g.bi, s);
     body = r
       ? (r.fb ? '<div class="egnote" style="margin-bottom:10px">' + esc(s.cmFallback) + "</div>" : "") +
-        '<div class="egpara core">' + cmBody(r.text, g.bi) + "</div>" +
+        '<div class="egpara core">' + cmBody(r.text, g.bi, +g.c, g.c === "0" || +g.v === 0 || +g.v >= 900) + "</div>" +
         '<div class="egnote">' + esc(s.cmNote) + "</div>"
       : '<div class="note">' + esc(s.cmErr) + "</div>";
   }
@@ -3341,7 +3392,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v81", APP_DATE = "2026-10-04";
+var APP_VER = "study-v82", APP_DATE = "2026-10-04";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
