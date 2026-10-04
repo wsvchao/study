@@ -341,6 +341,7 @@ body.hasaudio.hastab .footbar{bottom:calc(182px + env(safe-area-inset-bottom))}
 .egref{font-family:var(--f-mono);font-size:calc(10px * var(--fs));letter-spacing:.05em;
   color:var(--faint);margin-bottom:5px}
 .egpara.core .egref{color:var(--brass)}
+.egopen{margin-left:8px;font-size:11.5px;color:var(--brass);text-decoration:none;white-space:nowrap}
 .egzh{font-size:calc(16px * var(--fs));line-height:1.8}
 .egen{font-size:calc(15px * var(--fs));line-height:1.65}
 .egen.alt{font-size:calc(13px * var(--fs));line-height:1.55;margin-top:9px;color:var(--faint)}
@@ -572,7 +573,7 @@ body.hascmsheet main,body.hascmsheet.hasaudio.hastab main,body.hascmsheet.hasaud
 "use strict";
 var DATA = JSON.parse(document.getElementById("bt-data").textContent);
 var TOPICS = DATA.topics, VT = DATA.v, BOOKS = DATA.books;
-var EG = DATA.eg || {}, EGV = 2;
+var EG = DATA.eg || {}, EGV = 2, EGW_URL = "https://wsvchao.github.io/egw/";
 /* 英文書卷縮寫（僅用於書卷格子，避免全名太長被截斷），順序與 BOOKS 一致 */
 var EN_ABBR = ["Gen","Exod","Lev","Num","Deut","Josh","Judg","Ruth","1Sam","2Sam",
   "1Kgs","2Kgs","1Chr","2Chr","Ezra","Neh","Esth","Job","Ps","Prov",
@@ -2470,7 +2471,7 @@ function viewEg(s){
       var x = egText(c.b, id.split("#")[1], s);
       if(!x) return "";
       return '<div class="egpara' + (c.core[i] ? " core" : "") + '">' +
-        '<div class="egref">' + esc(x.r) + "</div>" +
+        '<div class="egref">' + esc(x.r) + ' <a class="egopen" href="' + EGW_URL + '#/b/' + encodeURIComponent(c.b) + '/' + encodeURIComponent(x.r.split(" ")[1] || "") + '" target="_blank" rel="noopener">' + esc(s.key === "en" ? "Open in EGW reader ›" : "在 EGW 閱讀器開啟 ›") + "</a></div>" +
         (x.zh ? '<p class="egzh">' + esc(x.zh) + "</p>" : "") +
         '<p class="egen' + (x.zh ? " alt" : "") + '">' + esc(x.en) + "</p></div>";
     }).join("") + '<div class="egnote">' + esc(s.egNote) + "</div>";
@@ -2530,7 +2531,7 @@ function cmResolve(raw, bi, s){
   if(!wantZh) return rawIsZh ? null : { text: raw, fb: false };
   return { text: raw, fb: !rawIsZh };
 }
-var CMT = {}, CMV = 7;
+var CMT = {}, CMV = 8;
 function cmUrl(bi){ return "commentary/" + (bi < 10 ? "0" + bi : bi) + ".json?v=" + CMV; }
 function loadCmBook(bi, cb){
   if(CMT[bi]) return cb(null, CMT[bi]);
@@ -3392,7 +3393,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v83", APP_DATE = "2026-10-04";
+var APP_VER = "study-v85", APP_DATE = "2026-10-04";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
@@ -4175,6 +4176,17 @@ document.addEventListener("change",function(e){
   st.audioSeeking=false;
 });
 render();
+
+/* 深層連結：#go=bible/書卷(1-66).章.節 （由 EGW 閱讀器開啟） */
+(function(){
+  var m = /^#go=bible\/(\d+)\.(\d+)\.(\d+)$/.exec(location.hash || "");
+  if(!m) return;
+  var bi = +m[1] - 1, c = +m[2], v = +m[3];
+  if(bi < 0 || bi > 65 || !c) return;
+  st.bi = bi; st.chFrom = "bchap";
+  try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+  openChapter(bi, c, v);
+})();
 
 })();
 </script>
