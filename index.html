@@ -729,7 +729,7 @@ var S = {
    weakHow:"「不熟」＝還沒答對過，或上次答忘記。",
    weakHowLv:"只出這個難度下還沒答對過、或上次答忘記的題目。",
    vlvDesc:{fill:"點空格可以單獨顯示一個詞",hint:"點任一句，可單獨顯示那一句",blank:"點任一句，可單獨顯示那一句"},
-   footer:"經文：聖經和合本（1919，公有領域）／King James Version（公有領域）。本 App 為個人與教會學習用途。" },
+   footer:"經文版本：中文採用《聖經和合本》（1919 年版，公有領域）；英文採用 King James Version（KJV，公有領域）。本App 僅供個人學習使用，不作商業用途。" },
  hans:{ lang:"hans", key:"hans", rk:"rh", vk:"kh",
    title:"銘刻心版", sub:"圣经主题索引", mark1:"铭刻", mark2:"心版", ed:"（研读版）",
    search:"搜索主题（中文或英文）…",
@@ -851,7 +851,7 @@ var S = {
    weakHow:"「不熟」＝还没答对过，或上次答忘记。",
    weakHowLv:"只出这个难度下还没答对过、或上次答忘记的题目。",
    vlvDesc:{fill:"点空格可以单独显示一个词",hint:"点任一句，可单独显示那一句",blank:"点任一句，可单独显示那一句"},
-   footer:"经文：圣经和合本（1919，公有领域）／King James Version（公有领域）。本 App 为个人与教会学习用途。" },
+   footer:"经文版本：中文采用《圣经和合本》（1919 年版，公有领域）；英文采用 King James Version（KJV，公有领域）。本App 仅供个人学习使用，不作商业用途。" },
  en:{ lang:"en", key:"en", rk:"re", vk:"ke",
    title:"銘刻心版", sub:"Topical Scripture Index", mark1:"銘刻", mark2:"心版", ed:"(Study)",
    search:"Search topics…",
@@ -973,7 +973,7 @@ var S = {
    weakHow:"“Not yet solid” = never answered correctly, or missed last time.",
    weakHowLv:"Only items you have not yet answered correctly at this level, or missed last time.",
    vlvDesc:{fill:"Tap a blank to reveal just that word",hint:"Tap any word to reveal just that word",blank:"Tap any word to reveal just that word"},
-   footer:"Scripture: Chinese Union Version (1919, public domain) / King James Version (public domain). This app is for personal and church study." }
+   footer:"Scripture versions: Chinese Union Version (1919, public domain); King James Version (KJV, public domain). This app is for personal study only, not for commercial use." }
 };
 function t(s){ var a=arguments; return String(s).replace(/%(\d)/g,function(m,i){return a[+i]}); }
 
@@ -3476,7 +3476,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v88", APP_DATE = "2026-10-04";
+var APP_VER = "study-v89", APP_DATE = "2026-10-05";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
