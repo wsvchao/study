@@ -1864,6 +1864,10 @@ function fsPanel(s){
     (st.fs===1?"":'<button class="fsreset" data-fs="reset">'+esc(s.fsReset)+"</button>")+
   "</div>";
 }
+function brandMark(s){
+  return '<span class="wordmark">'+esc(s.mark1)+"<i>"+esc(s.mark2)+"</i>"+
+    (s.ed ? '<b class="ed">'+esc(s.ed)+"</b>" : "")+"</span>";
+}
 function backBtn(s){ return '<button class="back" data-back="1">‹&nbsp;'+esc(s.back)+"</button>"; }
 
 /* ---- topic list ---- */
@@ -1907,8 +1911,7 @@ function refreshList(){
   if(box) box.innerHTML=listBox(L());
 }
 function viewList(s){
-  return bar('<span class="wordmark">'+esc(s.mark1)+"<i>"+esc(s.mark2)+"</i>"+
-      (s.ed ? '<b class="ed">'+esc(s.ed)+"</b>" : "")+"</span>")+
+  return bar(brandMark(s))+
     '<main><div class="wrap">'+
     '<input class="search" id="q" placeholder="'+esc(s.search)+'" value="'+esc(st.q)+'">'+
     '<div class="filt" style="margin:12px 0 12px">'+
@@ -1971,7 +1974,7 @@ function rangeAdd(o){
 }
 function viewBible(s){
   var q=(st.bq||"").trim();
-  return bar('<span class="bar-title">'+esc(s.tabBible)+"</span>")+
+  return bar(brandMark(s))+
     '<main><div class="wrap">'+
     '<input class="search" id="bq" placeholder="'+esc(s.bibleSearchPh)+'" value="'+esc(st.bq||"")+'">'+
     '<div id="biblesearchbox">'+bibleSearchBody(s)+"</div>"+
@@ -3110,7 +3113,7 @@ function cntLine(ts, s){
 function viewLib(s){
   var ts = libTopics();
   var rs = rollStats(), tgt = rs.due, got = doneToday();
-  var head = bar('<span class="bar-title">'+esc(s.tabLib)+"</span>");
+  var head = bar(brandMark(s));
   if(!ts.length){
     return head+'<main><div class="wrap"><div class="libempty">'+
       "<p>"+esc(s.libEmpty)+"</p><p class=\"sub\">"+esc(s.libEmpty2)+"</p></div></div></main>"+
@@ -3476,14 +3479,14 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v90", APP_DATE = "2026-10-06";
+var APP_VER = "study-v91", APP_DATE = "2026-10-07";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
     return '<button class="dchip" data-days="'+d+'" aria-pressed="'+(P.days===d)+'">'+
       esc(t(s.planDay,d))+"</button>"; }).join("");
   var rs=rollStats();
-  return bar('<span class="bar-title">'+esc(s.tabSet)+"</span>")+
+  return bar(brandMark(s))+
     '<main><div class="wrap">'+
     '<div class="sub" style="margin-top:4px"><em>'+esc(s.planTitle)+"</em></div>"+
     '<div class="scard">'+
@@ -4298,8 +4301,13 @@ window.addEventListener("message", function(e){
 
 /* 深層連結：#go=bible/書卷(1-66).章.節 （由 EGW 閱讀器開啟） */
 (function(){
-  var m = /^#go=bible\/(\d+)\.(\d+)\.(\d+)$/.exec(location.hash || "");
+  var h = location.hash || "";
+  if(!/^#go=bible\//.test(h)){
+    try{ h = sessionStorage.getItem("study.pendingGo") || ""; sessionStorage.removeItem("study.pendingGo"); }catch(e){ h = ""; }
+  }
+  var m = /^#go=bible\/(\d+)\.(\d+)\.(\d+)$/.exec(h);
   if(!m) return;
+  window.__deepGo = h;
   try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
   goBible(+m[1] - 1, +m[2], +m[3]);
 })();
@@ -4326,9 +4334,12 @@ if ("serviceWorker" in navigator) {
     }).catch(function () {});
     // 新版本裝好、準備接管頁面時，自動重新整理一次，換上新版本
     var refreshed = false;
+    var hadCtl = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener("controllerchange", function () {
-      if (refreshed) return;
+      if (refreshed || !hadCtl) return;   // 第一次安裝（原本沒有舊版）不需要重新整理
       refreshed = true;
+      /* 從 EGW 閱讀器點經文進來時，網址上的 #go= 已被清掉；重新整理前先記住，免得跳回主題頁 */
+      try{ if(window.__deepGo) sessionStorage.setItem("study.pendingGo", window.__deepGo); }catch(e){}
       window.location.reload();
     });
   });
