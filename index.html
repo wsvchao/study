@@ -214,7 +214,7 @@ main{padding:18px 0 calc(104px * var(--fs))}
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:6px;
   background:var(--surface);border-top:1px solid var(--rule);
   padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
-.tabbar button{flex:1;padding:9px 4px;font-size:calc(13.5px * var(--fs));
+.tabbar button{flex:1;padding:9px 4px;font-size:calc(13.5px * min(var(--fs), 1.3));
   color:var(--muted);font-weight:500;letter-spacing:.02em;
   border:1px solid var(--brass-line);border-radius:10px;background:transparent;
   transition:background .15s,border-color .15s,color .15s}
@@ -334,7 +334,7 @@ body.hasaudio.hastab .footbar{bottom:calc(182px + env(safe-area-inset-bottom))}
 .egrow{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 12px;padding-left:26px}
 .egchip{font-family:var(--f-mono);font-size:calc(10.5px * var(--fs));letter-spacing:.04em;
   color:var(--brass-ink);background:var(--brass-soft);border:1px solid var(--brass-line);
-  border-radius:6px;padding:4px 9px;white-space:nowrap}
+  border-radius:6px;padding:4px 9px;white-space:normal;text-align:left;max-width:100%}
 .egchip:active{opacity:.7}
 .egpara{padding:12px 14px;margin:0 -14px 6px;border-radius:10px;color:var(--faint)}
 .egpara p{margin:0}
@@ -661,7 +661,7 @@ var S = {
    vsHead:"經文全文", chooseLv:"選擇難度",
    vpick:"選一處經文開始", noSample:"（尚無全文）",
    fsTitle:"字級", fsReset:"回到標準字級",
-   fsNames:["小","標準","大","特大","最大"],
+   fsNames:["小","標準","大","特大","超大","極大","最大"],
    fsSampleK:"約3:16", fsSample:"上帝愛世人，甚至將祂的獨生子賜給他們。",
    filtAll:"全部", filtWeak:"只練不熟的", sortOrig:"主題",
    ctx:"前後文", ctxLoad:"載入中…", chPrev:"上一章", chNext:"下一章",
@@ -783,7 +783,7 @@ var S = {
    vsHead:"经文全文", chooseLv:"选择难度",
    vpick:"选一处经文开始", noSample:"（尚无全文）",
    fsTitle:"字级", fsReset:"回到标准字级",
-   fsNames:["小","标准","大","特大","最大"],
+   fsNames:["小","标准","大","特大","超大","极大","最大"],
    fsSampleK:"约3:16", fsSample:"上帝爱世人，甚至将祂的独生子赐给他们。",
    filtAll:"全部", filtWeak:"只练不熟的", sortOrig:"主题",
    ctx:"前后文", ctxLoad:"载入中…", chPrev:"上一章", chNext:"下一章",
@@ -905,7 +905,7 @@ var S = {
    vsHead:"Full text", chooseLv:"Difficulty",
    vpick:"Pick a passage to start", noSample:"(no full text yet)",
    fsTitle:"Text size", fsReset:"Back to default size",
-   fsNames:["Small","Default","Large","Larger","Largest"],
+   fsNames:["Small","Default","Large","Larger","X-Large","XX-Large","Largest"],
    fsSampleK:"John 3:16", fsSample:"For God so loved the world, that he gave his only begotten Son.",
    filtAll:"All", filtWeak:"Not yet solid", sortOrig:"Topical",
    ctx:"In context", ctxLoad:"Loading…", chPrev:"Previous chapter", chNext:"Next chapter",
@@ -1781,7 +1781,7 @@ function refSegs(ref){
 }
 
 /* ---------------- state ---------------- */
-var FS = [0.90, 1.00, 1.13, 1.28, 1.45];
+var FS = [0.90, 1.00, 1.13, 1.28, 1.45, 1.60, 1.75];
 /* 一律使用深色模式 */
 document.documentElement.setAttribute("data-theme","dark");
 try{ document.documentElement.style.colorScheme="dark"; }catch(e){}
@@ -3552,7 +3552,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v96", APP_DATE = "2026-10-10";
+var APP_VER = "study-v97", APP_DATE = "2026-10-10";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
