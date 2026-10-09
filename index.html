@@ -589,6 +589,15 @@ body.hascmsheet main,body.hascmsheet.hasaudio.hastab main,body.hascmsheet.hasaud
   body.hastab.tabhide .tabgrab::after{content:"";position:absolute;left:50%;bottom:5px;transform:translateX(-50%);
     width:56px;height:4px;border-radius:2px;background:var(--muted);opacity:.55}
 }
+
+/* ---- 字級面板：從上方列底下往下滑出、疊在目前畫面上，不必捲回頁首；再點 AA 就上滑收起 ---- */
+.fsdrop{position:fixed;left:0;right:0;top:54px;z-index:19;overflow:hidden;pointer-events:none;
+  visibility:hidden;transition:visibility 0s .3s}
+.fsdrop.open{visibility:visible;pointer-events:auto;transition:none}
+.fsdrop-in{transform:translateY(-104%);transition:transform .3s ease;padding:10px 0 16px;
+  max-height:calc(100vh - 80px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+.fsdrop.open .fsdrop-in{transform:translateY(0)}
+.fsdrop .fspanel{margin-bottom:0}
 </style>
 
 <div id="app"></div>
@@ -1842,6 +1851,7 @@ function render(){
     document.body.classList.toggle("hasfoot", h.indexOf('class="footbar"') >= 0);
   }catch(e){}
   app.innerHTML=h;
+  fsDropSync();
   window.scrollTo(0, st.keepScroll||0); st.keepScroll=0;
   if(st.screen==="chapter" && st.ch && st.ch.v){
     var cur=document.getElementById("chcur");
@@ -1868,8 +1878,31 @@ function bar(inner, mute){
   return '<div class="bar"'+(mute?' aria-hidden="true"':"")+'><div class="wrap">'+
     inner+fsBtn()+langSeg()+"</div></div>";
 }
-function fsPanel(s){
-  if(!st.fsOpen) return "";
+/* 字級面板改成固定在畫面上方、從上方列底下滑出的浮動面板（#fsdrop，不隨頁面重畫） */
+function fsPanel(s){ return ""; }
+function fsDropSync(){
+  var d=document.getElementById("fsdrop");
+  if(!d){
+    d=document.createElement("div"); d.id="fsdrop"; d.className="fsdrop"; d.setAttribute("aria-hidden","true");
+    d.innerHTML='<div class="fsdrop-in"></div>'; document.body.appendChild(d);
+    /* 面板開著時，點面板和 AA 以外的任何地方就收起（那一下點擊只用來收起，不會誤觸下面的按鈕） */
+    document.addEventListener("click", function(e){
+      if(!st.fsOpen) return;
+      if(e.target.closest && e.target.closest("#fsdrop,.abtn")) return;
+      e.preventDefault(); e.stopPropagation();
+      st.fsOpen=false; fsDropSync();
+    }, true);
+  }
+  var bar=document.querySelector(".bar");
+  d.style.top=(bar ? Math.round(bar.getBoundingClientRect().bottom) : 54)+"px";
+  var inn=d.firstChild;
+  var h='<div class="wrap">'+fsPanelHTML(L())+"</div>";
+  if(inn.__h!==h){ inn.innerHTML=h; inn.__h=h; }
+  d.classList.toggle("open", !!st.fsOpen);
+  d.setAttribute("aria-hidden", st.fsOpen ? "false" : "true");
+  var b=document.querySelector(".abtn"); if(b) b.setAttribute("aria-expanded", st.fsOpen ? "true" : "false");
+}
+function fsPanelHTML(s){
   return '<div class="fspanel"><h2>'+esc(s.fsTitle)+"</h2>"+
     '<div class="fsrow"><div class="stepper">'+
       '<button data-fs="down" aria-label="smaller"'+(st.fs===0?" disabled":"")+">&minus;</button>"+
@@ -3519,7 +3552,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v94", APP_DATE = "2026-10-10";
+var APP_VER = "study-v96", APP_DATE = "2026-10-10";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
@@ -3815,7 +3848,7 @@ document.addEventListener("click",function(e){
     else if(d.fs==="up"   && st.fs<FS.length-1) st.fs++;
     else if(d.fs==="down" && st.fs>0) st.fs--;
     else if(d.fs==="reset") st.fs=1;
-    P.fs=st.fs; save(); applyFs(); st.keepScroll=window.scrollY; return render();
+    P.fs=st.fs; save(); applyFs(); fsDropSync(); return;
   }
   if(d.lang){ st.lang=d.lang; P.lang=d.lang; save(); return render(); }
   if(d.back!==undefined){
