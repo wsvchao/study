@@ -570,6 +570,25 @@ body.hascmsheet main,body.hascmsheet.hasaudio.hastab main,body.hascmsheet.hasaud
 .egwov-t{font-size:13px;color:var(--muted);letter-spacing:.04em}
 .egwov-f{flex:1 1 auto;width:100%;border:0;background:var(--ground)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- 橫向時自動收起下方分頁列：往上滑（從畫面最下緣）或點小橫條叫回來，2 秒沒動作又收起 ---- */
+.tabbar{transition:transform .28s ease}
+.tabgrab{display:none}
+@media (orientation:landscape) and (max-height:520px){
+  body.hastab.tabhide .tabbar{transform:translateY(110%);pointer-events:none}
+  html body.hastab.tabhide main{padding-bottom:28px !important}
+  html body.hastab.tabhide.hasfoot main{padding-bottom:84px !important}
+  html body.hastab.tabhide .footbar{bottom:env(safe-area-inset-bottom) !important}
+  html body.hasaudio.hastab.tabhide main{padding-bottom:150px !important}
+  html body.hasaudio.hastab.tabhide.hasfoot main{padding-bottom:206px !important}
+  html body.hasaudio.hastab.tabhide .footbar{bottom:calc(136px + env(safe-area-inset-bottom)) !important}
+  html body.hastab.tabhide .audiobar{bottom:calc(8px + env(safe-area-inset-bottom)) !important}
+  html body.hastab.tabhide .fab{bottom:calc(16px + env(safe-area-inset-bottom)) !important}
+  body.hastab.tabhide .tabgrab{display:block;position:fixed;left:50%;transform:translateX(-50%);
+    bottom:env(safe-area-inset-bottom);width:110px;height:22px;z-index:39;background:transparent;border:0;padding:0}
+  body.hastab.tabhide .tabgrab::after{content:"";position:absolute;left:50%;bottom:5px;transform:translateX(-50%);
+    width:56px;height:4px;border-radius:2px;background:var(--muted);opacity:.55}
+}
 </style>
 
 <div id="app"></div>
@@ -3500,7 +3519,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v93", APP_DATE = "2026-10-10";
+var APP_VER = "study-v94", APP_DATE = "2026-10-10";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
@@ -4344,6 +4363,45 @@ window.addEventListener("message", function(e){
   goBible(+m[1] - 1, +m[2], +m[3]);
 })();
 
+})();
+</script>
+
+
+<script>
+/* ---- 橫向時自動收起下方分頁列 ----
+   手機橫放時分頁列自動滑下去、讓內文多一點空間；從螢幕最下緣往上滑（或點底部的小橫條）
+   分頁列滑回來，2 秒沒有碰它就又收起來。 */
+(function(){
+  var mq = window.matchMedia("(orientation: landscape) and (max-height: 520px)");
+  var timer = null, pressing = false, sy = null;
+  var cl = document.body.classList;
+  function hide(){ if(!pressing) cl.toggle("tabhide", mq.matches); }
+  function arm(){ clearTimeout(timer); timer = setTimeout(hide, 2000); }
+  function show(){ cl.remove("tabhide"); arm(); }
+  function sync(){ clearTimeout(timer); cl.toggle("tabhide", mq.matches); }
+  var grab = document.createElement("button");
+  grab.className = "tabgrab"; grab.setAttribute("aria-label", "show tabs");
+  grab.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); show(); });
+  document.body.appendChild(grab);
+  if(mq.addEventListener) mq.addEventListener("change", sync); else if(mq.addListener) mq.addListener(sync);
+  window.addEventListener("orientationchange", function(){ setTimeout(sync, 250); });
+  document.addEventListener("touchstart", function(e){
+    var t = e.touches[0];
+    if(e.target.closest && e.target.closest(".tabbar")){ pressing = true; clearTimeout(timer); }
+    sy = (mq.matches && cl.contains("tabhide") && t && t.clientY > window.innerHeight - 90) ? t.clientY : null;
+  }, {passive:true});
+  document.addEventListener("touchmove", function(e){
+    if(sy === null) return;
+    var t = e.touches[0];
+    if(t && sy - t.clientY > 16){ sy = null; show(); }
+  }, {passive:true});
+  function release(){ if(pressing){ pressing = false; if(!cl.contains("tabhide")) arm(); } sy = null; }
+  document.addEventListener("touchend", release, {passive:true});
+  document.addEventListener("touchcancel", release, {passive:true});
+  document.addEventListener("click", function(e){
+    if(e.target.closest && e.target.closest(".tabbar") && !cl.contains("tabhide")) arm();
+  });
+  sync();
 })();
 </script>
 
