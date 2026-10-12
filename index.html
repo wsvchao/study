@@ -611,7 +611,7 @@ body.hascmsheet main,body.hascmsheet.hasaudio.hastab main,body.hascmsheet.hasaud
 "use strict";
 var DATA = JSON.parse(document.getElementById("bt-data").textContent);
 var TOPICS = DATA.topics, VT = DATA.v, BOOKS = DATA.books;
-var EG = DATA.eg || {}, EGV = 3, EGW_URL = "https://wsvchao.github.io/egw/";
+var EG = DATA.eg || {}, EGV = 4, EGW_URL = "https://wsvchao.github.io/egw/";
 /* 英文書卷縮寫（僅用於書卷格子，避免全名太長被截斷），順序與 BOOKS 一致 */
 var EN_ABBR = ["Gen","Exod","Lev","Num","Deut","Josh","Judg","Ruth","1Sam","2Sam",
   "1Kgs","2Kgs","1Chr","2Chr","Ezra","Neh","Esth","Job","Ps","Prov",
@@ -3552,7 +3552,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v97", APP_DATE = "2026-10-10";
+var APP_VER = "study-v98", APP_DATE = "2026-10-12";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
