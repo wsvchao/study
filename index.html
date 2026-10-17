@@ -2160,7 +2160,8 @@ function refreshBibleSearch(){
   box.innerHTML = bibleSearchBody(L());
 }
 /* 馬太福音等書卷的「小標題」與「平行經文」：sec/NN.json，格式 [章,節,繁,簡,英,[[書,章,節,章,節],…]] */
-var SECBK = {39:1, 40:1, 41:1, 42:1}, SEC = {}, SECV = 2;
+var SECBK = {}, SEC = {}, SECV = 4;
+for(var _sb = 0; _sb < 66; _sb++) SECBK[_sb] = 1;
 function loadSec(bi, cb){
   if(!SECBK[bi] || SEC[bi] !== undefined) return cb();
   if(typeof fetch !== "function"){ SEC[bi] = null; return cb(); }
@@ -3594,7 +3595,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v100", APP_DATE = "2026-10-17";
+var APP_VER = "study-v102", APP_DATE = "2026-10-17";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
