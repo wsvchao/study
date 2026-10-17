@@ -355,6 +355,11 @@ body.hasaudio.hastab .footbar{bottom:calc(182px + env(safe-area-inset-bottom))}
   color:var(--faint);margin:16px 0 0;padding-top:12px;border-top:1px solid var(--rule)}
 .chline{display:flex;gap:10px;align-items:baseline;padding:7px 8px;border-radius:8px}
 .chline.cur{background:var(--brass-soft)}
+.chsec{margin:20px 4px 6px;line-height:1.7}
+.chsec:first-child{margin-top:4px}
+.chsect{font-family:var(--f-ui);font-weight:700;font-size:calc(17px * var(--fs));color:var(--ink)}
+.chpar{font-family:var(--f-ui);font-size:calc(14px * var(--fs));color:var(--faint);margin-left:6px}
+.chpl{background:none;border:0;padding:2px 1px;margin:0;font:inherit;color:var(--brass-ink);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
 .chn{font-family:var(--f-mono);font-size:calc(11px * var(--fs));color:var(--faint);
   flex:0 0 auto;min-width:calc(22px * var(--fs));text-align:right;font-variant-numeric:tabular-nums;
   padding-top:.25em}
@@ -2154,16 +2159,51 @@ function refreshBibleSearch(){
   }
   box.innerHTML = bibleSearchBody(L());
 }
-function openChapter(bi, c, v){
-  st.ch = { bi: bi, c: c, v: v || 0, loading: !BIB[bi], err: 0 };
+/* 馬太福音等書卷的「小標題」與「平行經文」：sec/NN.json，格式 [章,節,繁,簡,英,[[書,章,節,章,節],…]] */
+var SECBK = {39:1}, SEC = {}, SECV = 1;
+function loadSec(bi, cb){
+  if(!SECBK[bi] || SEC[bi] !== undefined) return cb();
+  if(typeof fetch !== "function"){ SEC[bi] = null; return cb(); }
+  fetch("sec/" + (bi < 10 ? "0" : "") + bi + ".json?v=" + SECV)
+    .then(function(r){ if(!r.ok) throw new Error("http"); return r.json(); })
+    .then(function(j){ SEC[bi] = j; cb(); })
+    .catch(function(){ SEC[bi] = null; cb(); });
+}
+function openChapter(bi, c, v, keepStack){
+  if(!keepStack) st.chStack = [];
+  var needB = !BIB[bi], needS = !!SECBK[bi] && SEC[bi] === undefined;
+  st.ch = { bi: bi, c: c, v: v || 0, loading: needB || needS, err: 0 };
   st.screen = "chapter";
   render();
-  if(BIB[bi]) return;
-  loadBook(bi, function(err){
-    if(!st.ch || st.screen !== "chapter") return;
-    st.ch.loading = 0; st.ch.err = err ? 1 : 0;
+  if(!needB && !needS) return;
+  var left = (needB ? 1 : 0) + (needS ? 1 : 0), bad = 0;
+  function done(){
+    if(--left > 0) return;
+    if(!st.ch || st.screen !== "chapter" || st.ch.bi !== bi) return;
+    st.ch.loading = 0; st.ch.err = bad ? 1 : 0;
     render();
+  }
+  if(needB) loadBook(bi, function(err){ if(err) bad = 1; done(); });
+  if(needS) loadSec(bi, done);
+}
+function parLabel(p, s){
+  var b = BOOKS[p[0]], en = (s.key === "en");
+  var name = en ? b[5] : (s.key === "hans" ? b[1] : b[0]);
+  var sp = en ? ":" : "·", dash = en ? "\u2013" : "\u2014";
+  var r = name + (en ? " " : "") + p[1] + sp + p[2];
+  if(p[3] !== p[1]) r += dash + p[3] + sp + p[4];
+  else if(p[4] !== p[2]) r += dash + p[4];
+  return r;
+}
+function secHtml(sc, s){
+  var title = (s.key === "en") ? sc[4] : (s.key === "hans" ? sc[3] : sc[2]);
+  var links = sc[5].map(function(p){
+    return '<button class="chpl" data-secgo="' + p[0] + "." + p[1] + "." + p[2] + '">' + esc(parLabel(p, s)) + "</button>";
   });
+  var en = (s.key === "en");
+  return '<div class="chsec" data-sv="' + sc[1] + '"><span class="chsect">' + esc(title) + "</span>" +
+    (links.length ? '<span class="chpar">' + (en ? "(" : "\uff08") + links.join(en ? "; " : "\uff1b") + (en ? ")" : "\uff09") + "</span>" : "") +
+    "</div>";
 }
 function chapterCount(bi){ return CHN[bi] || 0; }
 
@@ -2444,9 +2484,11 @@ function viewChapter(s){
       }
     });
     ch.cmAny = cmAny;
+    var secAt = {};
+    (SEC[ch.bi] || []).forEach(function(sc){ if(sc[0] === ch.c) (secAt[sc[1]] = secAt[sc[1]] || []).push(sc); });
     body = nums.map(function(n){
       var ck = ch.bi + "." + ch.c + "." + n, hasCm = cmAvail(ck, s);
-      return '<div class="chline' + (n === ch.v ? " cur" : "") + (cmCover[n] ? " cmr" : "") + '" id="' + (n === ch.v ? "chcur" : "") + '"' +
+      return (secAt[n] ? secAt[n].map(function(sc){ return secHtml(sc, s); }).join("") : "") + '<div class="chline' + (n === ch.v ? " cur" : "") + (cmCover[n] ? " cmr" : "") + '" id="' + (n === ch.v ? "chcur" : "") + '"' +
         ' data-hv="' + ck + '">' +
         (hasCm ? '<span class="chn hascm" role="button" aria-label="' + esc(s.cmBtn) + '" data-cmv="' + ck + '">' + n + "</span>"
                : '<span class="chn">' + n + "</span>") +
@@ -3552,7 +3594,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v98", APP_DATE = "2026-10-12";
+var APP_VER = "study-v99", APP_DATE = "2026-10-17";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
@@ -3840,7 +3882,7 @@ function viewVerse(s){
 
 /* ---------------- events ---------------- */
 document.addEventListener("click",function(e){
-  var el=e.target.closest("[data-smark],[data-sall],[data-tab],[data-libpick],[data-pick],[data-pgrp],[data-pickok],[data-libopen],[data-libdrop],[data-libdeltoggle],[data-libdelpick],[data-fpopen],[data-fppick],[data-fpall],[data-fpok],[data-fpmodeitem],[data-fpmodetopic],[data-fpmodecustom],[data-fpmodecustomok],[data-taddmp],[data-mpsrc],[data-days],[data-daysok],[data-opench],[data-vscroll],[data-eg],[data-ctx],[data-chgo],[data-bbook],[data-bchap],[data-bv],[data-badd],[data-bpick],[data-hit],[data-pmode],[data-pbook],[data-pchap],[data-pv],[data-padd],[data-ctcreate],[data-ctrenopen],[data-ctrenok],[data-ctrencancel],[data-ctup],[data-ctdown],[data-ctrm],[data-ctedit],[data-taddtoggle],[data-tbook],[data-tchap],[data-tv],[data-tadd],[data-sort],[data-retry],[data-prev],[data-rseg],[data-refmask],[data-filt],[data-vfilt],[data-clear],[data-fs],[data-lang],[data-topic],[data-xref],[data-vpick],[data-back],[data-seq],[data-lv],[data-reveal],[data-mark],[data-restart],[data-item],[data-openv],[data-verse],[data-vlv],[data-vreveal],[data-vmark],[data-reshuffle],[data-nextv],[data-cm],[data-audio],[data-astop],[data-aprev],[data-anext],[data-aplaypause],[data-askip],[data-xr],[data-cmback],[data-xgo],[data-xcm],[data-xclose],[data-cmv],[data-cmprev],[data-cmnext],[data-cmfull],[data-cmclose],[data-med],.blk,.sblk");
+  var el=e.target.closest("[data-smark],[data-sall],[data-tab],[data-libpick],[data-pick],[data-pgrp],[data-pickok],[data-libopen],[data-libdrop],[data-libdeltoggle],[data-libdelpick],[data-fpopen],[data-fppick],[data-fpall],[data-fpok],[data-fpmodeitem],[data-fpmodetopic],[data-fpmodecustom],[data-fpmodecustomok],[data-taddmp],[data-mpsrc],[data-days],[data-daysok],[data-opench],[data-vscroll],[data-eg],[data-ctx],[data-chgo],[data-secgo],[data-bbook],[data-bchap],[data-bv],[data-badd],[data-bpick],[data-hit],[data-pmode],[data-pbook],[data-pchap],[data-pv],[data-padd],[data-ctcreate],[data-ctrenopen],[data-ctrenok],[data-ctrencancel],[data-ctup],[data-ctdown],[data-ctrm],[data-ctedit],[data-taddtoggle],[data-tbook],[data-tchap],[data-tv],[data-tadd],[data-sort],[data-retry],[data-prev],[data-rseg],[data-refmask],[data-filt],[data-vfilt],[data-clear],[data-fs],[data-lang],[data-topic],[data-xref],[data-vpick],[data-back],[data-seq],[data-lv],[data-reveal],[data-mark],[data-restart],[data-item],[data-openv],[data-verse],[data-vlv],[data-vreveal],[data-vmark],[data-reshuffle],[data-nextv],[data-cm],[data-audio],[data-astop],[data-aprev],[data-anext],[data-aplaypause],[data-askip],[data-xr],[data-cmback],[data-xgo],[data-xcm],[data-xclose],[data-cmv],[data-cmprev],[data-cmnext],[data-cmfull],[data-cmclose],[data-med],.blk,.sblk");
   if(!el) return;
   var d=el.dataset;
   if(d.fs){
@@ -3852,6 +3894,9 @@ document.addEventListener("click",function(e){
   }
   if(d.lang){ st.lang=d.lang; P.lang=d.lang; save(); return render(); }
   if(d.back!==undefined){
+    if(st.screen==="chapter" && st.chStack && st.chStack.length){
+      var _p=st.chStack.pop(); st.keepScroll=0; return openChapter(_p.bi,_p.c,_p.v,true);
+    }
     if(st.screen==="egw") st.screen=(st.eg&&st.eg.from)||"topic";
     else if(st.screen==="cm") st.screen=(st.cm&&st.cm.from)||"verse";
     else if(st.screen==="med") st.screen=(st.med&&st.med.from)||"verses";
@@ -4251,6 +4296,11 @@ document.addEventListener("click",function(e){
   }
   if(d.chgo!==undefined){
     st.ch.c=+d.chgo; st.ch.v=0; st.keepScroll=0; return render();
+  }
+  if(d.secgo!==undefined){
+    var _a=d.secgo.split("."), _sec=el.closest(".chsec");
+    (st.chStack=st.chStack||[]).push({bi:st.ch.bi, c:st.ch.c, v:_sec?+_sec.getAttribute("data-sv"):0});
+    st.keepScroll=0; return openChapter(+_a[0], +_a[1], +_a[2], true);
   }
   if(d.vlv){ st.vd.level=d.vlv; st.vd.revealed=false; st.vd.shown={}; return render(); }
   if(d.vreveal!==undefined){ st.vd.revealed=true; return render(); }
