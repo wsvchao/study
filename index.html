@@ -1826,7 +1826,22 @@ function ctxOf(tp,item){
 
 /* ---------------- render ---------------- */
 var app=document.getElementById("app");
+var SCRM = {}, SCRK = null;
+function scrKey(){
+  var k = st.screen;
+  try{
+    if(k==="topic") k += "|" + st.tid;
+    else if(k==="verses") k += "|" + st.tid + "|" + st.itemIdx;
+    else if(k==="verse") k += "|" + st.tid + "|" + st.itemIdx + "|" + (st.vd && st.vd.vi);
+    else if(k==="bchap") k += "|" + st.bi;
+    else if(k==="chapter") k += "|" + (st.ch && st.ch.bi) + "." + (st.ch && st.ch.c);
+    else if(k==="libtopic") k += "|" + st.tid;
+  }catch(e){}
+  return k;
+}
 function render(){
+  var _sk = scrKey();
+  if(SCRK !== null && SCRK !== _sk) SCRM[SCRK] = window.scrollY;
   var s=L();
   var h="";
   if(st.screen==="list")        h=viewList(s);
@@ -1857,7 +1872,10 @@ function render(){
   }catch(e){}
   app.innerHTML=h;
   fsDropSync();
-  window.scrollTo(0, st.keepScroll||0); st.keepScroll=0;
+  var _y = st.keepScroll||0;
+  if(!_y && st.backNav && SCRK !== _sk && SCRM[_sk]) _y = SCRM[_sk];
+  SCRK = _sk; st.backNav = false;
+  window.scrollTo(0, _y); st.keepScroll=0;
   if(st.screen==="chapter" && st.ch && st.ch.v){
     var cur=document.getElementById("chcur");
     if(cur){ try{ cur.scrollIntoView({block:"center"}); }catch(e){} }
@@ -3595,7 +3613,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v102", APP_DATE = "2026-10-17";
+var APP_VER = "study-v103", APP_DATE = "2026-10-25";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
@@ -3930,7 +3948,7 @@ document.addEventListener("click",function(e){
       else st.screen="list";
     }
     else st.screen="list";
-    st.armAll=false; st.armTopic=false;
+    st.armAll=false; st.armTopic=false; st.backNav=true;
     return render();
   }
   if(d.vpick!==undefined){ st.screen="vpick"; return render(); }
