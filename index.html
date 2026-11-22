@@ -206,6 +206,19 @@ main{padding:18px 0 calc(104px * var(--fs))}
 .bcell.min{background:#8A5257}  .bcell.gos{background:#6E7C46}
 .bcell.acts{background:#46707C} .bcell.epi{background:#4E7C63}
 .bcell.rev{background:#8A5257}
+/* 聖經搜尋範圍：全部／舊約／新約／自選書卷 */
+.bscope{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 12px}
+.bscope .lbl{font-family:var(--f-mono);font-size:calc(11px * var(--fs));color:var(--faint);letter-spacing:.06em;margin-right:2px}
+.bscope button,.bsgrps button{font-size:calc(12.5px * var(--fs));padding:6px 12px;border-radius:99px;
+  border:1px solid var(--rule);color:var(--muted);background:var(--surface)}
+.bscope button[aria-pressed="true"],.bsgrps button[aria-pressed="true"]{background:var(--brass-soft);
+  color:var(--brass-ink);border-color:var(--brass-line);font-weight:600}
+.bspanel{background:var(--surface);border:1px solid var(--rule-soft);border-radius:12px;padding:12px;margin:0 0 14px}
+.bsgrps{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.bsgrps button{padding:5px 10px;font-size:calc(12px * var(--fs))}
+.bsgrid .bcell{padding:9px 2px;font-size:calc(12.5px * var(--fs))}
+.bsgrid .bcell:not(.on){opacity:.38}
+.bsfoot{display:flex;gap:8px;margin-top:10px}
 .badded{background:var(--brass-soft);border:1px solid var(--brass-line);color:var(--brass-ink);
   border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:calc(13.5px * var(--fs))}
 
@@ -695,9 +708,12 @@ var S = {
      "主耶穌！我當如何做，可使祢得榮耀？"],
    medPrayer:"我的禱告：",
    tabBible:"聖經", tabTopics:"主題", tabLib:"背誦庫", tabSet:"設定",
-   bibleSearchPh:"搜尋經文文字…", bibleSearchLoading:"第一次搜尋需要先載入整本聖經（只需一次，之後就存在手機裡）…",
+   bibleSearchPh:"搜尋經文文字…", bibleSearchLoading:"第一次搜尋需要先載入這些書卷（只需一次，之後就存在手機裡）…",
    bibleSearchCount:"共 %1 節", bibleSearchMore:"僅顯示前 200 節，請輸入更精確的字詞。",
    bibleSearchEmpty:"沒有找到符合的經文。",
+   bsLbl:"範圍", bsAll:"全部", bsOT:"舊約", bsNT:"新約", bsPick:"自選書卷", bsPickN:"%1 卷",
+   bsPickHint:"點書卷加入或移除；點分類可整組選取。", bsDone:"完成", bsClear:"全部清除",
+   bsGrps:["摩西五經","歷史書","詩歌智慧書","大先知書","小先知書","四福音","使徒行傳","書信","啟示錄"],
    bibleNote:"點書卷看各章；第一次讀某一卷需要連網，之後就存在手機裡，離線也讀得到。",
    audioBtn:"英文朗讀（KJV）", audioSrc:"錄音來源：LibriVox 公版朗讀",
    bChapHint:"點一章直接讀整章經文。",
@@ -817,9 +833,12 @@ var S = {
      "主耶稣！我当如何做，可使祢得荣耀？"],
    medPrayer:"我的祷告：",
    tabBible:"圣经", tabTopics:"主题", tabLib:"背诵库", tabSet:"设定",
-   bibleSearchPh:"搜索经文文字…", bibleSearchLoading:"第一次搜索需要先载入整本圣经（只需一次，之后就存在手机里）…",
+   bibleSearchPh:"搜索经文文字…", bibleSearchLoading:"第一次搜索需要先载入这些书卷（只需一次，之后就存在手机里）…",
    bibleSearchCount:"共 %1 节", bibleSearchMore:"仅显示前 200 节，请输入更精确的字词。",
    bibleSearchEmpty:"没有找到符合的经文。",
+   bsLbl:"范围", bsAll:"全部", bsOT:"旧约", bsNT:"新约", bsPick:"自选书卷", bsPickN:"%1 卷",
+   bsPickHint:"点书卷加入或移除；点分类可整组选取。", bsDone:"完成", bsClear:"全部清除",
+   bsGrps:["摩西五经","历史书","诗歌智慧书","大先知书","小先知书","四福音","使徒行传","书信","启示录"],
    bibleNote:"点书卷看各章；第一次读某一卷需要连网，之后就存在手机里，离线也读得到。",
    audioBtn:"英文朗读（KJV）", audioSrc:"录音来源：LibriVox 公版朗读",
    bChapHint:"点一章直接读整章经文。",
@@ -939,9 +958,12 @@ var S = {
      "Lord Jesus, what should I do so that You may be glorified?"],
    medPrayer:"My prayer:",
    tabBible:"Bible", tabTopics:"Topics", tabLib:"Memorize", tabSet:"Settings",
-   bibleSearchPh:"Search Bible text…", bibleSearchLoading:"Loading the whole Bible for search (only once, then kept on the device)…",
+   bibleSearchPh:"Search Bible text…", bibleSearchLoading:"Loading these books for search (only once, then kept on the device)…",
    bibleSearchCount:"%1 verses", bibleSearchMore:"Showing the first 200 verses only -- try a more specific word or phrase.",
    bibleSearchEmpty:"No matching verses found.",
+   bsLbl:"SCOPE", bsAll:"All", bsOT:"OT", bsNT:"NT", bsPick:"Choose books", bsPickN:"%1 books",
+   bsPickHint:"Tap a book to add or remove it; tap a group to select the whole group.", bsDone:"Done", bsClear:"Clear all",
+   bsGrps:["Law","History","Poetry","Major Prophets","Minor Prophets","Gospels","Acts","Epistles","Revelation"],
    bibleNote:"Tap a book for its chapters. A book is fetched the first time you open it, then kept on the device for offline use.",
    audioBtn:"Listen (KJV audio)", audioSrc:"Audio source: LibriVox public-domain recording",
    bChapHint:"Tap a chapter to read it.",
@@ -2062,8 +2084,9 @@ function viewBible(s){
   return bar(brandMark(s))+
     '<main><div class="wrap">'+
     '<input class="search" id="bq" placeholder="'+esc(s.bibleSearchPh)+'" value="'+esc(st.bq||"")+'">'+
-    '<div id="biblesearchbox">'+bibleSearchBody(s)+"</div>"+
-    '<div id="biblegridbox" class="bgrid"'+(q?' style="display:none"':"")+'>'+bookGridCells(s,"bbook")+"</div>"+
+    bsScopeBar(s)+
+    '<div id="biblesearchbox">'+(st.bsOpen?"":bibleSearchBody(s))+"</div>"+
+    '<div id="biblegridbox" class="bgrid"'+((q||st.bsOpen)?' style="display:none"':"")+'>'+bookGridCells(s,"bbook")+"</div>"+
     '<p class="foot" style="text-align:left">'+esc(s.bibleNote)+"</p></div></main>";
 }
 function viewBChap(s){
@@ -2100,42 +2123,100 @@ function viewBVpick(s){
 /* 全本聖經拆成 66 個檔放在網站上，點「前後文」才抓那一卷，抓過就留在手機裡。 */
 var BIB = {};
 function bookUrl(bi){ return "bible/" + (bi < 10 ? "0" : "") + bi + ".json"; }
+var BIBQ = {};   /* 正在抓的書卷：同一卷同時被要求兩次時只抓一次 */
 function loadBook(bi, cb){
   if(BIB[bi]) return cb(null, BIB[bi]);
   if(typeof fetch !== "function") return cb(1);
+  if(BIBQ[bi]){ BIBQ[bi].push(cb); return; }
+  BIBQ[bi] = [cb];
+  function done(err, j){ var cbs = BIBQ[bi] || []; delete BIBQ[bi]; cbs.forEach(function(f){ f(err, j); }); }
   fetch(bookUrl(bi))
     .then(function(r){ if(!r.ok) throw new Error("http"); return r.json(); })
-    .then(function(j){ BIB[bi] = j; cb(null, j); })
-    .catch(function(){ cb(1); });
+    .then(function(j){ BIB[bi] = j; done(null, j); })
+    .catch(function(){ done(1); });
+}
+/* ---- 搜尋範圍：全部／舊約（0-38）／新約（39-65）／自選書卷 ----
+   存在 P.bscope = { m:"all"|"ot"|"nt"|"pick", b:[書卷索引…] }，下次打開還記得。 */
+var BS_GRP = [[0,5],[5,17],[17,22],[22,27],[27,39],[39,43],[43,44],[44,65],[65,66]];
+function bsGet(){
+  var o = P.bscope || {};
+  var m = (o.m==="ot"||o.m==="nt"||o.m==="pick") ? o.m : "all";
+  var b = Array.isArray(o.b) ? o.b.filter(function(x){ return x>=0 && x<66; }) : [];
+  return { m:m, b:b };
+}
+function bsSet(m, b){ P.bscope = { m:m, b:b }; save(); }
+function bsBooks(){
+  var o = bsGet(), out = [], i;
+  if(o.m==="pick" && o.b.length) return o.b.slice().sort(function(a,b){ return a-b; });
+  var lo = o.m==="nt" ? 39 : 0, hi = o.m==="ot" ? 39 : BOOKS.length;
+  for(i=lo;i<hi;i++) out.push(i);
+  return out;
+}
+/* 改了範圍就整頁重畫；有搜尋字詞時，順便載入新範圍還沒抓的書卷並更新結果 */
+function bsRender(){
+  render();
+  if((st.bq||"").trim() && !st.bsOpen) refreshBibleSearch();
+}
+function bsKey(){ return bsBooks().join(","); }
+function bsLabel(s){
+  var o = bsGet();
+  if(o.m==="ot") return s.bsOT;
+  if(o.m==="nt") return s.bsNT;
+  if(o.m==="pick" && o.b.length) return o.b.length===1 ? bookName(o.b[0], s) : t(s.bsPickN, o.b.length);
+  return s.bsAll;
+}
+function bsScopeBar(s){
+  var o = bsGet(), pick = o.m==="pick" && o.b.length;
+  function chip(m, label){
+    var on = (m==="pick") ? (st.bsOpen || (o.m==="pick" && o.b.length>0))
+           : (!st.bsOpen && (o.m===m || (m==="all" && o.m==="pick" && !o.b.length)));
+    return '<button data-bscope="'+m+'" aria-pressed="'+on+'">'+esc(label)+"</button>";
+  }
+  var bar = '<div class="bscope"><span class="lbl">'+esc(s.bsLbl)+"</span>"+
+    chip("all", s.bsAll)+chip("ot", s.bsOT)+chip("nt", s.bsNT)+
+    chip("pick", pick ? s.bsPick+"（"+bsLabel(s)+"）" : s.bsPick+" ▾")+"</div>";
+  if(!st.bsOpen) return bar;
+  var sel = {}; o.b.forEach(function(x){ sel[x]=1; });
+  var grps = BS_GRP.map(function(g, gi){
+    var all = true; for(var i=g[0];i<g[1];i++) if(!sel[i]) all = false;
+    return '<button data-bsgrp="'+gi+'" aria-pressed="'+all+'">'+esc(s.bsGrps[gi])+"</button>";
+  }).join("");
+  var cells = BOOKS.map(function(b, bi){
+    var label = (s.key==="en") ? (EN_ABBR[bi] || bookName(bi,s)) : bookName(bi,s);
+    return '<button class="bcell '+bookGrp(bi)+(sel[bi]?" on":"")+'" data-bsbook="'+bi+'">'+esc(label)+"</button>";
+  }).join("");
+  return bar+'<div class="bspanel"><p class="hint" style="margin:0 0 10px">'+esc(s.bsPickHint)+"</p>"+
+    '<div class="bsgrps">'+grps+"</div>"+
+    '<div class="bgrid bsgrid">'+cells+"</div>"+
+    '<div class="bsfoot"><button class="btn" data-bsclear="1"'+(o.b.length?"":" disabled")+">"+esc(s.bsClear)+"</button>"+
+    '<button class="btn btn-p btn-wide" data-bsdone="1">'+esc(s.bsDone)+(o.b.length?"（"+t(s.bsPickN,o.b.length)+"）":"")+"</button></div></div>";
 }
 /* ---- 聖經全文搜尋：「聖經」分頁書卷格子上方那個搜尋框 ----
    平常每卷書都是點了才抓（離線省流量），但要搜整本聖經就得先把 66 卷全部
    抓齊。第一次搜尋才觸發（不是一進「聖經」分頁就抓），抓過一次之後留在
    BIB 記憶體裡，同一次使用期間（甚至下次開網頁，因為 bible/ 那層本來就有
    長期快取）都不用再抓。 */
+function bsReady(){
+  var bks = bsBooks();
+  for(var i=0;i<bks.length;i++) if(!BIB[bks[i]]) return st.bsTried===bsKey();
+  return true;
+}
 function ensureBibleSearchReady(cb){
-  if(st.bibleAllLoaded) return cb();
-  if(st.bibleLoading){ (st.bibleLoadCbs = st.bibleLoadCbs || []).push(cb); return; }
-  st.bibleLoading = true; st.bibleLoadCbs = [cb];
-  var need = [];
-  for(var bi = 0; bi < BOOKS.length; bi++){ if(!BIB[bi]) need.push(bi); }
+  var need = bsBooks().filter(function(bi){ return !BIB[bi]; }), key = bsKey();
   var left = need.length;
-  function finish(){
-    st.bibleAllLoaded = true; st.bibleLoading = false;
-    var cbs = st.bibleLoadCbs || []; st.bibleLoadCbs = [];
-    cbs.forEach(function(f){ f(); });
-  }
-  if(!left) return finish();
-  need.forEach(function(bi){ loadBook(bi, function(){ if(--left <= 0) finish(); }); });
+  if(!left) return cb();
+  need.forEach(function(bi){ loadBook(bi, function(){
+    if(--left <= 0){ st.bsTried = key; cb(); }
+  }); });
 }
 /* 純文字比對（不分詞、不做同音／簡繁轉換），只在目前介面語言那一欄找；
    物件的鍵（章、節）是純數字字串，JS 保證這種「陣列索引」鍵一定照數字大小
    列舉，所以掃出來的結果本來就是書卷／章／節的正確順序，不必再另外排序。 */
 function bibleSearchHits(q, s){
   var col = (s.key === "en") ? 2 : (s.key === "hans" ? 1 : 0);
-  var hits = [];
-  for(var bi = 0; bi < BOOKS.length; bi++){
-    var book = BIB[bi]; if(!book) continue;
+  var hits = [], bks = bsBooks();
+  for(var k = 0; k < bks.length; k++){
+    var bi = bks[k], book = BIB[bi]; if(!book) continue;
     for(var c in book){
       var verses = book[c];
       for(var v in verses){
@@ -2153,7 +2234,7 @@ function hlQuery(text, q){
 function bibleSearchBody(s){
   var q = (st.bq || "").trim();
   if(!q) return "";
-  if(!st.bibleAllLoaded) return '<div class="chload">' + esc(s.bibleSearchLoading) + "</div>";
+  if(!bsReady()) return '<div class="chload">' + esc(s.bibleSearchLoading) + "</div>";
   var hits = bibleSearchHits(q, s);
   if(!hits.length) return '<p class="hint">' + esc(s.bibleSearchEmpty) + "</p>";
   var CAP = 200, capped = hits.length > CAP, shown = hits.slice(0, CAP);
@@ -2163,7 +2244,7 @@ function bibleSearchBody(s){
       '<span class="vkey">' + esc(ref) + "</span>" +
       '<span class="vtext">' + hlQuery(h.text, q) + "</span></button>";
   }).join("");
-  return '<div class="src" style="margin:0 0 6px">' + esc(t(s.bibleSearchCount, shown.length)) +
+  return '<div class="src" style="margin:0 0 6px">' + esc(bsLabel(s)) + " · " + esc(t(s.bibleSearchCount, hits.length)) +
     (capped ? " " + esc(s.bibleSearchMore) : "") + "</div>" + rows;
 }
 /* 跟 refreshList() 一樣的道理：只重畫結果那一小塊，輸入框本身不重建，
@@ -2173,8 +2254,9 @@ function refreshBibleSearch(){
   if(!box) return;
   var q = (st.bq || "").trim();
   var grid = document.getElementById("biblegridbox");
+  if(st.bsOpen){ box.innerHTML = ""; if(grid) grid.style.display = "none"; return; }
   if(grid) grid.style.display = q ? "none" : "";
-  if(q && !st.bibleAllLoaded){
+  if(q && !bsReady()){
     box.innerHTML = bibleSearchBody(L());
     ensureBibleSearchReady(function(){
       var b2 = document.getElementById("biblesearchbox");
@@ -3911,7 +3993,7 @@ function viewVerse(s){
 
 /* ---------------- events ---------------- */
 document.addEventListener("click",function(e){
-  var el=e.target.closest("[data-smark],[data-sall],[data-tab],[data-libpick],[data-pick],[data-pgrp],[data-pickok],[data-libopen],[data-libdrop],[data-libdeltoggle],[data-libdelpick],[data-fpopen],[data-fppick],[data-fpall],[data-fpok],[data-fpmodeitem],[data-fpmodetopic],[data-fpmodecustom],[data-fpmodecustomok],[data-taddmp],[data-mpsrc],[data-days],[data-daysok],[data-opench],[data-vscroll],[data-eg],[data-ctx],[data-chgo],[data-secgo],[data-bbook],[data-bchap],[data-bv],[data-badd],[data-bpick],[data-hit],[data-pmode],[data-pbook],[data-pchap],[data-pv],[data-padd],[data-ctcreate],[data-ctrenopen],[data-ctrenok],[data-ctrencancel],[data-ctup],[data-ctdown],[data-ctrm],[data-ctedit],[data-taddtoggle],[data-tbook],[data-tchap],[data-tv],[data-tadd],[data-sort],[data-retry],[data-prev],[data-rseg],[data-refmask],[data-filt],[data-vfilt],[data-clear],[data-fs],[data-lang],[data-topic],[data-xref],[data-vpick],[data-back],[data-seq],[data-lv],[data-reveal],[data-mark],[data-restart],[data-item],[data-openv],[data-verse],[data-vlv],[data-vreveal],[data-vmark],[data-reshuffle],[data-nextv],[data-cm],[data-audio],[data-astop],[data-aprev],[data-anext],[data-aplaypause],[data-askip],[data-xr],[data-cmback],[data-xgo],[data-xcm],[data-xclose],[data-cmv],[data-cmprev],[data-cmnext],[data-cmfull],[data-cmclose],[data-med],.blk,.sblk");
+  var el=e.target.closest("[data-smark],[data-sall],[data-tab],[data-libpick],[data-pick],[data-pgrp],[data-pickok],[data-libopen],[data-libdrop],[data-libdeltoggle],[data-libdelpick],[data-fpopen],[data-fppick],[data-fpall],[data-fpok],[data-fpmodeitem],[data-fpmodetopic],[data-fpmodecustom],[data-fpmodecustomok],[data-taddmp],[data-mpsrc],[data-days],[data-daysok],[data-opench],[data-vscroll],[data-eg],[data-ctx],[data-chgo],[data-secgo],[data-bbook],[data-bscope],[data-bsgrp],[data-bsbook],[data-bsdone],[data-bsclear],[data-bchap],[data-bv],[data-badd],[data-bpick],[data-hit],[data-pmode],[data-pbook],[data-pchap],[data-pv],[data-padd],[data-ctcreate],[data-ctrenopen],[data-ctrenok],[data-ctrencancel],[data-ctup],[data-ctdown],[data-ctrm],[data-ctedit],[data-taddtoggle],[data-tbook],[data-tchap],[data-tv],[data-tadd],[data-sort],[data-retry],[data-prev],[data-rseg],[data-refmask],[data-filt],[data-vfilt],[data-clear],[data-fs],[data-lang],[data-topic],[data-xref],[data-vpick],[data-back],[data-seq],[data-lv],[data-reveal],[data-mark],[data-restart],[data-item],[data-openv],[data-verse],[data-vlv],[data-vreveal],[data-vmark],[data-reshuffle],[data-nextv],[data-cm],[data-audio],[data-astop],[data-aprev],[data-anext],[data-aplaypause],[data-askip],[data-xr],[data-cmback],[data-xgo],[data-xcm],[data-xclose],[data-cmv],[data-cmprev],[data-cmnext],[data-cmfull],[data-cmclose],[data-med],.blk,.sblk");
   if(!el) return;
   var d=el.dataset;
   if(d.fs){
@@ -4039,6 +4121,35 @@ document.addEventListener("click",function(e){
     st.armAll=false; st.armTopic=false; st.armDrop=false; st.bAdded=""; st.keepScroll=0;
     st.fpInto=null; st.fpModeCustom=false; st.mpq=""; st.libDelMode=false; st.libDelSel={};
     return render();
+  }
+  /* ---- 聖經搜尋範圍 ---- */
+  if(d.bscope!==undefined){
+    var bo=bsGet();
+    if(d.bscope==="pick"){
+      st.bsOpen = !(st.bsOpen);
+      if(!st.bsOpen && !bo.b.length) bsSet("all", bo.b); else bsSet("pick", bo.b);
+    } else { st.bsOpen=false; bsSet(d.bscope, bo.b); }
+    st.keepScroll=window.scrollY; return bsRender();
+  }
+  if(d.bsbook!==undefined){
+    var bo2=bsGet(), bn=+d.bsbook, ix=bo2.b.indexOf(bn);
+    if(ix>=0) bo2.b.splice(ix,1); else bo2.b.push(bn);
+    bsSet("pick", bo2.b); st.keepScroll=window.scrollY; return bsRender();
+  }
+  if(d.bsgrp!==undefined){
+    var bo3=bsGet(), g=BS_GRP[+d.bsgrp], allOn=true, gi;
+    for(gi=g[0];gi<g[1];gi++) if(bo3.b.indexOf(gi)<0) allOn=false;
+    for(gi=g[0];gi<g[1];gi++){
+      var gx=bo3.b.indexOf(gi);
+      if(allOn){ if(gx>=0) bo3.b.splice(gx,1); } else if(gx<0) bo3.b.push(gi);
+    }
+    bsSet("pick", bo3.b); st.keepScroll=window.scrollY; return bsRender();
+  }
+  if(d.bsclear!==undefined){ bsSet("pick", []); st.keepScroll=window.scrollY; return bsRender(); }
+  if(d.bsdone!==undefined){
+    var bo4=bsGet(); st.bsOpen=false;
+    bsSet(bo4.b.length ? "pick" : "all", bo4.b);
+    st.keepScroll=0; return bsRender();
   }
   /* ---- 聖經瀏覽 ---- */
   if(d.bbook!==undefined){
