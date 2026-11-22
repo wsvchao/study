@@ -3622,7 +3622,7 @@ function viewLibTopic(s){
 
 /* ---------------- 設定 ---------------- */
 /* 每次出新版：這兩個常數、sw.js 的 VERSION 一起改 */
-var APP_VER = "study-v104", APP_DATE = "2026-11-22";
+var APP_VER = "study-v105", APP_DATE = "2026-11-22";
 function viewSettings(s){
   var opts=[23,49,77];
   var chips=opts.map(function(d){
@@ -4516,10 +4516,10 @@ var SHX_T = {
   hans: { share: "分享给朋友", pickLang: "分享哪些语言（可多选）", go: "分享", cancel: "取消",
     copied: "已复制，可以贴到 LINE 等讯息", needLang: "请至少选一种语言",
     recv: "朋友分享给你", addMine: "加入我的背诵库", inMine: "已在背诵库", openLib: "到背诵库练习",
-    openApp: "复制并在 App 开启", iosSteps: "已复制连结。请打开主画面上的 App →「背诵库」→ 按「贴上分享连结」。",
+    openApp: "复制并在 App 开启", iosSteps: "已复制链接。请打开主画面上的 App →「背诵库」→ 按「贴上分享链接」。",
     addHere: "直接加到这个浏览器", install: "还没安装 App？在 Safari 按「分享」→「加入主画面」。",
-    paste: "贴上分享连结", pasteBox: "把分享连结贴在这里", add: "加入",
-    bad: "这不是有效的分享连结", added: "已加入背诵库：%1", already: "已在背诵库：%1", fail: "载入失败，请确认网路后再试。" },
+    paste: "贴上分享链接", pasteBox: "把分享链接贴在这里", add: "加入",
+    bad: "这不是有效的分享链接", added: "已加入背诵库：%1", already: "已在背诵库：%1", fail: "载入失败，请确认网路后再试。" },
   en: { share: "Share with a friend", pickLang: "Languages to share (pick one or more)", go: "Share", cancel: "Cancel",
     copied: "Copied — paste it into LINE or any message", needLang: "Pick at least one language",
     recv: "Shared with you", addMine: "Add to my memorize list", inMine: "Already in your list", openLib: "Go to memorize list",
@@ -4548,6 +4548,7 @@ function shxCss(){
     ".shx-chip[aria-pressed=true]::before{content:'✓ '}" +
     ".shx-btns{display:flex;gap:10px}.shx-btns .btn{flex:1}" +
     ".shxrow{display:flex;gap:8px;margin:0 0 14px}.shxrow .btn{flex:1}" +
+    ".shxrow .btn.shxpaste{background:var(--brass,#D4A95C);color:var(--ground,#111);border-color:var(--brass,#D4A95C);font-weight:600}" +
     ".shxin{display:flex;gap:8px;margin:0 0 14px}.shxin input{flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid var(--rule,#444);" +
       "background:var(--ground,#111);color:inherit;font-size:16px}" +
     ".shxrecv{font-size:calc(12px * var(--fs,1));letter-spacing:.06em;color:var(--brass-ink,#d9b56a);margin:4px 0 6px}" +
@@ -4720,7 +4721,7 @@ function shxAddRange(r){
 /* 背誦庫上方的「貼上分享連結」 */
 function shxLibRow(){
   var T = shxT(); shxCss();
-  return '<div class="shxrow"><button class="btn" data-shxpaste="1">📋 ' + esc(T.paste) + "</button></div>" +
+  return '<div class="shxrow"><button class="btn shxpaste" data-shxpaste="1">' + esc(T.paste) + "</button></div>" +
     (st.shxIn ? '<div class="shxin"><input id="shxin" type="url" inputmode="url" autocomplete="off" placeholder="' + esc(T.pasteBox) + '">' +
       '<button class="btn btn-brass" data-shxinok="1">' + esc(T.add) + "</button></div>" : "");
 }
